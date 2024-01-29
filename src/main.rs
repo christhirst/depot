@@ -67,6 +67,7 @@ pub struct Cash {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Pocket {
+    name: String,
     all_cash: Cash,
     all_stocks: HashMap<String, Stock>,
 }
@@ -97,13 +98,14 @@ impl<'s> DB<'s> {
     async fn buy<'q>(self, stock: HashMap<String, Stock>, price: i64) -> surrealdb::Result<()> {
         let pocket: Option<Pocket> = self.db.select(("test", "test")).await?;
         let mut pocke = pocket.unwrap();
-        pocke.all_cash.euro -= stock[""].amount * price;
+        pocke.all_cash.euro -= stock["stock"].amount * price;
         //let sto = pocke.all_stocks.get(".).unwrap();
 
         let people: Option<Pocket> = self
             .db
-            .update(("stock", "ii"))
+            .update(("stock", "iiq"))
             .merge(Pocket {
+                name: "pocketname".to_owned(),
                 all_cash: Cash {
                     euro: pocke.all_cash.euro,
                 },
@@ -143,38 +145,27 @@ async fn main() -> surrealdb::Result<()> {
 
     let ii = DB { db: &db };
 
-    let mut m = HashMap::new();
-    m.insert(
-        "k".to_owned(),
-        Stock {
-            name: "teste".to_owned(),
-            symbol: "teste".to_owned(),
-            amount: 2,
-        },
-    );
+    let mut m: HashMap<String, Stock> = HashMap::new();
+    let s = Stock {
+        name: "teste".to_owned(),
+        symbol: "teste".to_owned(),
+        amount: 2,
+    };
 
-    // Create a new person with a random id
-    /* let created: Option<Stock> = db
-    .create(("stock", "ii"))
-    .content(Pocket {
-        all_cash: Cash { euro: 2 },
+    m.insert("stock".to_owned(), s);
+
+    let p = Pocket {
+        name: "pocketname".to_owned(),
+        all_cash: Cash { euro: 0 },
         all_stocks: m,
-    })
-    .await?; */
+    };
+    println!("{}", "qqqq");
+    // Create a new person with a random id
+    let created: Option<Stock> = db.create(("stock", "iiq")).content(p).await?;
 
     //dbg!(created);
 
-    let mut m = HashMap::new();
-    m.insert(
-        "k".to_owned(),
-        Stock {
-            name: "".to_owned(),
-            symbol: "".to_owned(),
-            amount: 2,
-        },
-    );
-
-    ii.buy(m, 22);
+    //ii.buy(m, 22);
 
     // Update a person record with a specific id
     /* let updated: Option<Record> = db
@@ -188,7 +179,7 @@ async fn main() -> surrealdb::Result<()> {
 
     // Select all people records
     println!("{}", "qqqq");
-    let people: Vec<Pocket> = db.select("stock").await?;
+    let people: Vec<Stock> = db.select("stock").await?;
     dbg!(people);
 
     // Perform a custom advanced query
