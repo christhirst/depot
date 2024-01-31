@@ -1,9 +1,12 @@
 use std::collections::{hash_map, HashMap};
 
+use serde::de::value::{self, Error};
 #[allow(unused, dead_code)]
 use serde::{Deserialize, Serialize};
+use surrealdb::dbs::Response;
 use surrealdb::engine::any::{self, Any};
-use surrealdb::sql::Thing;
+use surrealdb::engine::local::Db;
+use surrealdb::sql::{value, Object, Thing, Value};
 use surrealdb::Surreal;
 /* #[derive(Debug, Deserialize, Serialize)]
 struct Stocks {
@@ -102,23 +105,66 @@ struct DB<'a> {
     db: &'a Surreal<Any>,
 }
 
+fn define_db(table: &str) -> String {
+    let q = format!(
+        "
+        DEFINE TABLE {table} SCHEMAFULL;
+        ",
+    );
+    q
+}
+
+#[derive(Debug)]
+pub enum DBError {
+    sdb(surrealdb::error::Db),
+}
+
+impl From<surrealdb::error::Db> for DBError {
+    fn from(value: surrealdb::error::Db) -> Self {
+        Self::sdb(value)
+    }
+}
+
+fn into_iter_objects(ress: Vec<Response>) -> Result<Value, DBError> {
+    let res = ress.into_iter().next().map(|rp| rp.result).transpose()?;
+    let v = Value::Bool(true);
+    match res {
+        Some(Value::Array(arr)) => {
+            let it = arr.into_iter().map(|v| match v {
+                Value::Object(object) => Ok(object),
+                _ => Err(DBError::sdb),
+            });
+        }
+        None => Err(DBError::sdb),
+        _ => println!(""),
+    };
+    Ok(v)
+}
+
 // impl of Val
 impl<'s> DB<'s> {
-    async fn user_add(self, table: &str) -> surrealdb::Result<()> {
-        Ok(())
-    }
-    async fn user_del(self, table: &str) -> surrealdb::Result<()> {
-        Ok(())
-    }
-    async fn user_get(self, table: &str) -> surrealdb::Result<()> {
+    async fn db_init(&self, table: &str) -> surrealdb::Result<()> {
+        let q = define_db(table);
+        let mut result = self.db.query(q).await?;
+
         Ok(())
     }
 
-    async fn flushdb(self, table: &str) -> surrealdb::Result<Vec<Record>> {
+    async fn user_add(&self, table: &str) -> surrealdb::Result<()> {
+        Ok(())
+    }
+    async fn user_del(&self, table: &str) -> surrealdb::Result<()> {
+        Ok(())
+    }
+    async fn user_get(&self, table: &str) -> surrealdb::Result<()> {
+        Ok(())
+    }
+
+    async fn flushdb(&self, table: &str) -> surrealdb::Result<Vec<Record>> {
         let rec: Vec<Record> = self.db.delete(table).await?;
         Ok(rec)
     }
-    async fn buy<'q>(self, stock: HashMap<String, Stock>, price: i64) -> surrealdb::Result<()> {
+    async fn buy<'q>(&self, stock: HashMap<String, Stock>, price: i64) -> surrealdb::Result<()> {
         // Run some queries
         let query = "
 CREATE person;
@@ -208,6 +254,7 @@ async fn main() -> surrealdb::Result<()> {
         amount: 10000,
     };
     println!("{:?}", &cash);
+    ii.db_init("user");
     let result = ii.cash_add(&cash).await?;
     //let created: Option<Cash> = result.take(0)?;
     println!("{:?}", "&cash");
