@@ -5,7 +5,19 @@ use serde::{Deserialize, Serialize};
 use surrealdb::engine::any::{self, Any};
 use surrealdb::sql::Thing;
 use surrealdb::Surreal;
+/* #[derive(Debug, Deserialize, Serialize)]
+struct Stocks {
+    #[allow(dead_code)]
+    name:  String,
+    amount: u32,
+}
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Pockets {
+    all_cash: Cash,
+    all_stocks:  Vec<Stocks>,
+}
+ */
 /*
 #[derive(Debug, Clone)]
 pub enum MyError {
@@ -62,7 +74,8 @@ impl Pocket {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Cash {
-    pub euro: i64,
+    pub currency: String,
+    pub amount: i64,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -91,49 +104,75 @@ struct DB<'a> {
 
 // impl of Val
 impl<'s> DB<'s> {
+    async fn user_add(self, table: &str) -> surrealdb::Result<()> {
+        Ok(())
+    }
+    async fn user_del(self, table: &str) -> surrealdb::Result<()> {
+        Ok(())
+    }
+    async fn user_get(self, table: &str) -> surrealdb::Result<()> {
+        Ok(())
+    }
+
     async fn flushdb(self, table: &str) -> surrealdb::Result<Vec<Record>> {
         let rec: Vec<Record> = self.db.delete(table).await?;
         Ok(rec)
     }
     async fn buy<'q>(self, stock: HashMap<String, Stock>, price: i64) -> surrealdb::Result<()> {
+        // Run some queries
+        let query = "
+CREATE person;
+SELECT * FROM type::table($table);
+";
+        //add amount, add, transaction,
+        self.db.query(query).bind(("table", "person")).await?;
+
         let pocket: Option<Pocket> = self.db.select(("test", "test")).await?;
         let mut pocke = pocket.unwrap();
-        pocke.all_cash.euro -= stock["stock"].amount * price;
+
         //let sto = pocke.all_stocks.get(".).unwrap();
 
-        let people: Option<Pocket> = self
-            .db
-            .update(("stock", "iiq"))
-            .merge(Pocket {
-                name: "pocketname".to_owned(),
-                all_cash: Cash {
-                    euro: pocke.all_cash.euro,
-                },
-                all_stocks: stock,
-            })
-            .await?;
         Ok(())
     }
 
-    async fn sell(db: Surreal<Any>, table: &str) -> surrealdb::Result<()> {
-        let people: Vec<Record> = db.delete(table).await?;
+    async fn stock_sell(self, table: &str) -> surrealdb::Result<()> {
+        Ok(())
+    }
+
+    async fn cash_add(self, cash: &Cash) -> surrealdb::Result<()> {
+        println!("{}", "3");
+        let query = "
+        DEFINE TABLE cash SCHEMALESS;
+        DEFINE FIELD amount ON TABLE cash TYPE number;
+        DEFINE FIELD currency ON TABLE cash TYPE string;
+        CREATE cash SET currency = 'eur', amount = 10000;
+        SELECT * FROM cash;
+        ";
+        let q = format!(
+            "
+            CREATE users:test1 SET mail = 'user1@mail.com';
+            DEFINE TABLE cash SCHEMAFULL;
+            DEFINE FIELD amount ON TABLE cash TYPE number;
+            DEFINE FIELD currency ON TABLE cash TYPE string;
+            CREATE cash:1 SET currency = 'eur', amount = 110000;
+            CREATE cash:2 SET currency = 'eur', amount = 10000;
+            RELATE users:test1->wrote->cash:1 SET time.written = time::now();
+            SELECT * FROM cash:1;",
+        );
+        //RELATE users:test1->wrote->cash:1 SET time.written = time::now();
+
+        let mut result = self.db.query(q).await?;
+
+        let r: Option<Record> = result.take(7)?;
+        println!("{:?}", r.unwrap());
+
+        println!("{}", "4");
+        Ok(())
+    }
+    async fn cash_get(self, table: &str) -> surrealdb::Result<()> {
         Ok(())
     }
 }
-
-/* #[derive(Debug, Deserialize, Serialize)]
-struct Stocks {
-    #[allow(dead_code)]
-    name:  String,
-    amount: u32,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Pockets {
-    all_cash: Cash,
-    all_stocks:  Vec<Stocks>,
-}
- */
 
 #[tokio::main]
 async fn main() -> surrealdb::Result<()> {
@@ -145,28 +184,33 @@ async fn main() -> surrealdb::Result<()> {
 
     let ii = DB { db: &db };
 
-    let mut m: HashMap<String, Stock> = HashMap::new();
-    let s = Stock {
-        name: "teste".to_owned(),
-        symbol: "teste".to_owned(),
-        amount: 2,
-    };
+    //let mut m: HashMap<String, Stock> = HashMap::new();
+    /*  let s = Stock {
+              name: "teste".to_owned(),
+              symbol: "teste".to_owned(),
+              amount: 2,
+          };
 
-    m.insert("stock".to_owned(), s);
+       m.insert("stock".to_owned(), s);
 
     let p = Pocket {
         name: "pocketname".to_owned(),
         all_cash: Cash { euro: 0 },
         all_stocks: m,
-    };
-    println!("{}", "qqqq");
+    };  */
+
     // Create a new person with a random id
-    let created: Option<Stock> = db.create(("stock", "iiq")).content(p).await?;
+    //let created: Option<Stock> = db.create(("stock", "iiq")).content(p).await?;
 
     //dbg!(created);
-
-    //ii.buy(m, 22);
-
+    let cash = Cash {
+        currency: "".to_owned(),
+        amount: 10000,
+    };
+    println!("{:?}", &cash);
+    let result = ii.cash_add(&cash).await?;
+    //let created: Option<Cash> = result.take(0)?;
+    println!("{:?}", "&cash");
     // Update a person record with a specific id
     /* let updated: Option<Record> = db
     .update(("stock", "ii"))
@@ -178,7 +222,7 @@ async fn main() -> surrealdb::Result<()> {
     //dbg!(updated);
 
     // Select all people records
-    println!("{}", "qqqq");
+    /*   println!("{}", "qqqq");
     let people: Vec<Stock> = db.select("stock").await?;
     dbg!(people);
 
@@ -186,7 +230,7 @@ async fn main() -> surrealdb::Result<()> {
     let groups = db
         .query("SELECT marketing, count() FROM type::table($table) GROUP BY marketing")
         .bind(("table", "person"))
-        .await?;
+        .await?; */
     //dbg!(groups);
 
     Ok(())
