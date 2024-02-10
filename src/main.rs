@@ -1,3 +1,4 @@
+use std::clone;
 use std::collections::{hash_map, HashMap};
 
 use serde::de::value::{self, Error};
@@ -105,46 +106,88 @@ struct DB<'a> {
     db: &'a Surreal<Any>,
 }
 
-fn define_db(table: &str) -> String {
-    let q = format!(
-        "
-        DEFINE TABLE {table} SCHEMAFULL;
-        ",
-    );
+fn define_table(table: &Vec<&str>) -> String {
+    let mut q = String::from("");
+    for s in table {
+        let qs = format!("DEFINE TABLE {} SCHEMAFULL;\n ", s);
+        q.push_str(&qs)
+    }
+    q
+}
+
+fn define_field(table: &Vec<(&str, &str, &str)>) -> String {
+    let mut q = String::from("");
+    for s in table {
+        let qs = format!("DEFINE FIELD {} ON TABLE {} TYPE {};\n", s.0, s.1, s.2);
+        q.push_str(&qs)
+    }
+    q
+}
+
+fn create_entries(table: &HashMap<&str, Vec<(&str, &str)>>) -> String {
+    let mut q = String::from("");
+    for mut s in table {
+        let qs = format!("CREATE {}", s.0);
+        q.push_str(&qs);
+
+        let mut i = 0;
+        for ss in s.1 {
+            i += 1;
+            let qs = format!(" SET {} = {}", ss.0, ss.1);
+            q.push_str(&qs);
+            if s.1.len() != i {
+                q.push_str(",")
+            }
+        }
+        q.push_str("; \n ");
+    }
+    q
+}
+
+fn relate_wrote(table: &Vec<((&str, &str), (&str, &str))>) -> String {
+    let mut q = String::from("");
+    for s in table {
+        let qs = format!(
+            "RELATE {}:{}->wrote->{}:{} SET time.written = time::now();\n",
+            s.0 .0, s.0 .1, s.1 .0, s.1 .1
+        );
+        q.push_str(&qs)
+    }
     q
 }
 
 #[derive(Debug)]
 pub enum DBError {
-    sdb(surrealdb::error::Db),
+    sdb,
 }
 
 impl From<surrealdb::error::Db> for DBError {
     fn from(value: surrealdb::error::Db) -> Self {
-        Self::sdb(value)
+        Self::sdb
     }
 }
 
-fn into_iter_objects(ress: Vec<Response>) -> Result<Value, DBError> {
+//Result<impl Iterator<Item = Result<Object>>, DBError>
+fn into_iter_objects(
+    ress: Vec<Response>,
+) -> Result<impl Iterator<Item = Result<Object, DBError>>, DBError> {
     let res = ress.into_iter().next().map(|rp| rp.result).transpose()?;
-    let v = Value::Bool(true);
     match res {
         Some(Value::Array(arr)) => {
             let it = arr.into_iter().map(|v| match v {
                 Value::Object(object) => Ok(object),
                 _ => Err(DBError::sdb),
             });
+            Ok(it)
         }
-        None => Err(DBError::sdb),
-        _ => println!(""),
-    };
-    Ok(v)
+        _ => Err(DBError::sdb),
+    }
 }
 
 // impl of Val
 impl<'s> DB<'s> {
-    async fn db_init(&self, table: &str) -> surrealdb::Result<()> {
-        let q = define_db(table);
+    async fn db_init(&self, table: &Vec<&str>) -> surrealdb::Result<()> {
+        let q = define_table(table);
         let mut result = self.db.query(q).await?;
 
         Ok(())
@@ -167,9 +210,9 @@ impl<'s> DB<'s> {
     async fn buy<'q>(&self, stock: HashMap<String, Stock>, price: i64) -> surrealdb::Result<()> {
         // Run some queries
         let query = "
-CREATE person;
-SELECT * FROM type::table($table);
-";
+                CREATE person;
+                SELECT * FROM type::table($table);
+                ";
         //add amount, add, transaction,
         self.db.query(query).bind(("table", "person")).await?;
 
@@ -186,14 +229,6 @@ SELECT * FROM type::table($table);
     }
 
     async fn cash_add(self, cash: &Cash) -> surrealdb::Result<()> {
-        println!("{}", "3");
-        let query = "
-        DEFINE TABLE cash SCHEMALESS;
-        DEFINE FIELD amount ON TABLE cash TYPE number;
-        DEFINE FIELD currency ON TABLE cash TYPE string;
-        CREATE cash SET currency = 'eur', amount = 10000;
-        SELECT * FROM cash;
-        ";
         let q = format!(
             "
             CREATE users:test1 SET mail = 'user1@mail.com';
@@ -224,11 +259,40 @@ SELECT * FROM type::table($table);
 async fn main() -> surrealdb::Result<()> {
     // Create database connection
     let db = surrealdb::engine::any::connect("mem://").await?;
-    //let people: Vec<Record> = db.delete("test").await?;
-    // Select a specific namespace / database
     db.use_ns("test").use_db("test").await?;
-
     let ii = DB { db: &db };
+
+    //add table user and cash
+    let set = vec!["user", "cash"];
+    let q = define_table(&set);
+    println!("{:?}", q);
+    let mut result = db.query(q).await?;
+    println!("{:?}", "&cash");
+    //add table user and cash DEFINE FIELD {} ON TABLE {} TYPE {}
+    let set = vec![
+        ("mail", "user", "string"),
+        ("currency", "cash", "string"),
+        ("amount", "cash", "number"),
+    ];
+    let q = define_field(&set);
+    let mut result = db.query(q).await?;
+    println!("{:?}", "&11111");
+    //("user", "mail", "user1@test.de"),
+    //    ("user", "mail", "user2@test.de"),
+    //add entries
+    let set1 = vec![("currency", "eur"), ("amount", "100000")];
+    let set2 = vec![("mail", "'user1@mail.com'")];
+    let mut rpg_party = HashMap::new();
+    //rpg_party.insert("cash", set1);
+    rpg_party.insert("user", set2);
+
+    println!("{:?}", "&2222");
+    println!("{:?}", create_entries(&rpg_party));
+    let mut result = db.query(create_entries(&rpg_party)).await?;
+
+    println!("{:?}", "&3333");
+    let r: Option<Record> = result.take(0)?;
+    println!("{:?}", r.unwrap());
 
     //let mut m: HashMap<String, Stock> = HashMap::new();
     /*  let s = Stock {
@@ -249,15 +313,15 @@ async fn main() -> surrealdb::Result<()> {
     //let created: Option<Stock> = db.create(("stock", "iiq")).content(p).await?;
 
     //dbg!(created);
-    let cash = Cash {
+    /* let cash = Cash {
         currency: "".to_owned(),
         amount: 10000,
-    };
-    println!("{:?}", &cash);
-    ii.db_init("user");
-    let result = ii.cash_add(&cash).await?;
+    }; */
+    //println!("{:?}", &cash);
+    //ii.db_init("user");
+    //let result = ii.cash_add(&cash).await?;
     //let created: Option<Cash> = result.take(0)?;
-    println!("{:?}", "&cash");
+
     // Update a person record with a specific id
     /* let updated: Option<Record> = db
     .update(("stock", "ii"))
