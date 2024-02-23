@@ -1,13 +1,12 @@
-use std::clone;
-use std::collections::{hash_map, HashMap};
+use std::collections::HashMap;
+use std::fmt;
 
-use serde::de::value::{self, Error};
 #[allow(unused, dead_code)]
 use serde::{Deserialize, Serialize};
 use surrealdb::dbs::Response;
-use surrealdb::engine::any::{self, Any};
-use surrealdb::engine::local::Db;
-use surrealdb::sql::{value, Object, Thing, Value};
+use surrealdb::engine::any::Any;
+
+use surrealdb::sql::{Object, Thing, Value};
 use surrealdb::Surreal;
 /* #[derive(Debug, Deserialize, Serialize)]
 struct Stocks {
@@ -106,7 +105,7 @@ struct DB<'a> {
     db: &'a Surreal<Any>,
 }
 
-fn define_table(table: &Vec<&str>) -> String {
+fn define_table(table: Vec<&str>) -> String {
     let mut q = String::from("");
     for s in table {
         let qs = format!("DEFINE TABLE {} SCHEMAFULL;\n ", s);
@@ -124,23 +123,27 @@ fn define_field(table: &Vec<(&str, &str, &str)>) -> String {
     q
 }
 
-fn create_entries(table: &HashMap<&str, Vec<(&str, &str)>>) -> String {
+fn create_entries(table: &HashMap<&str, Vec<(&str, &typeinto)>>) -> String {
     let mut q = String::from("");
-    for mut s in table {
+    for s in table {
         let qs = format!("CREATE {}", s.0);
         q.push_str(&qs);
 
         let mut i = 0;
         for ss in s.1 {
             i += 1;
-            let qs = format!(" SET {} = {}", ss.0, ss.1);
+            if i == 1 {
+                q.push_str(&" SET");
+            }
+            let qs = format!(" {} = {}", ss.0, ss.1);
             q.push_str(&qs);
             if s.1.len() != i {
-                q.push_str(",")
+                q.push(',')
             }
         }
         q.push_str("; \n ");
     }
+    println!("test {}", q);
     q
 }
 
@@ -158,12 +161,12 @@ fn relate_wrote(table: &Vec<((&str, &str), (&str, &str))>) -> String {
 
 #[derive(Debug)]
 pub enum DBError {
-    sdb,
+    Sdb,
 }
 
 impl From<surrealdb::error::Db> for DBError {
     fn from(value: surrealdb::error::Db) -> Self {
-        Self::sdb
+        Self::Sdb
     }
 }
 
@@ -176,20 +179,27 @@ fn into_iter_objects(
         Some(Value::Array(arr)) => {
             let it = arr.into_iter().map(|v| match v {
                 Value::Object(object) => Ok(object),
-                _ => Err(DBError::sdb),
+                _ => Err(DBError::Sdb),
             });
             Ok(it)
         }
-        _ => Err(DBError::sdb),
+        _ => Err(DBError::Sdb),
     }
 }
 
 // impl of Val
 impl<'s> DB<'s> {
-    async fn db_init(&self, table: &Vec<&str>) -> surrealdb::Result<()> {
+    async fn db_init(&self, table: Vec<&str>) -> surrealdb::Result<()> {
         let q = define_table(table);
         let mut result = self.db.query(q).await?;
 
+        Ok(())
+    }
+
+    fn pocket_init(&self) -> surrealdb::Result<()> {
+        Ok(())
+    }
+    fn pocket_del(&self) -> surrealdb::Result<()> {
         Ok(())
     }
 
@@ -255,16 +265,33 @@ impl<'s> DB<'s> {
     }
 }
 
+enum typeinto {
+    Int(i32),
+    Float(f64),
+    Text(String),
+}
+
+impl fmt::Display for typeinto {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            typeinto::Int(a) => write!(f, "{}", a),
+            typeinto::Float(a) => write!(f, "{}", a),
+            typeinto::Text(a) => write!(f, "{}", a),
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> surrealdb::Result<()> {
     // Create database connection
     let db = surrealdb::engine::any::connect("mem://").await?;
     db.use_ns("test").use_db("test").await?;
     let ii = DB { db: &db };
+    ii.pocket_init();
 
     //add table user and cash
     let set = vec!["user", "cash"];
-    let q = define_table(&set);
+    let q = define_table(set);
     println!("{:?}", q);
     let mut result = db.query(q).await?;
     println!("{:?}", "&cash");
@@ -280,10 +307,13 @@ async fn main() -> surrealdb::Result<()> {
     //("user", "mail", "user1@test.de"),
     //    ("user", "mail", "user2@test.de"),
     //add entries
-    let set1 = vec![("currency", "eur"), ("amount", "100000")];
-    let set2 = vec![("mail", "'user1@mail.com'")];
+    let binding1 = typeinto::Text(String::from("'eur'"));
+    let binding2 = typeinto::Text(String::from("100000.0"));
+    let set1: Vec<(&str, &typeinto)> = vec![("currency", &binding1), ("amount", &binding2)];
+    let binding = typeinto::Text(String::from("'user1@mail.com'"));
+    let set2 = vec![("mail", &binding)];
     let mut rpg_party = HashMap::new();
-    //rpg_party.insert("cash", set1);
+    rpg_party.insert("cash", set1);
     rpg_party.insert("user", set2);
 
     println!("{:?}", "&2222");
@@ -309,19 +339,6 @@ async fn main() -> surrealdb::Result<()> {
         all_stocks: m,
     };  */
 
-    // Create a new person with a random id
-    //let created: Option<Stock> = db.create(("stock", "iiq")).content(p).await?;
-
-    //dbg!(created);
-    /* let cash = Cash {
-        currency: "".to_owned(),
-        amount: 10000,
-    }; */
-    //println!("{:?}", &cash);
-    //ii.db_init("user");
-    //let result = ii.cash_add(&cash).await?;
-    //let created: Option<Cash> = result.take(0)?;
-
     // Update a person record with a specific id
     /* let updated: Option<Record> = db
     .update(("stock", "ii"))
@@ -330,18 +347,7 @@ async fn main() -> surrealdb::Result<()> {
         all_stocks: m,
     })
     .await?; */
-    //dbg!(updated);
 
-    // Select all people records
-    /*   println!("{}", "qqqq");
-    let people: Vec<Stock> = db.select("stock").await?;
-    dbg!(people);
-
-    // Perform a custom advanced query
-    let groups = db
-        .query("SELECT marketing, count() FROM type::table($table) GROUP BY marketing")
-        .bind(("table", "person"))
-        .await?; */
     //dbg!(groups);
 
     Ok(())
