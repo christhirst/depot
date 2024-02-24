@@ -189,20 +189,12 @@ fn into_iter_objects(
 
 // impl of Val
 impl<'s> DB<'s> {
-    async fn db_init(&self, table: Vec<&str>) -> surrealdb::Result<()> {
+    async fn db_init(&self, table: Vec<&str>) -> surrealdb::Result<surrealdb::Response> {
         let q = define_table(table);
         let mut result = self.db.query(q).await?;
 
-        Ok(())
+        Ok(result)
     }
-
-    fn pocket_init(&self) -> surrealdb::Result<()> {
-        Ok(())
-    }
-    fn pocket_del(&self) -> surrealdb::Result<()> {
-        Ok(())
-    }
-
     async fn user_add(&self, table: &str) -> surrealdb::Result<()> {
         Ok(())
     }
@@ -210,6 +202,26 @@ impl<'s> DB<'s> {
         Ok(())
     }
     async fn user_get(&self, table: &str) -> surrealdb::Result<()> {
+        Ok(())
+    }
+
+    async fn cash_add(&self, table: &str) -> surrealdb::Result<()> {
+        Ok(())
+    }
+    async fn cash_del(&self, table: &str) -> surrealdb::Result<()> {
+        Ok(())
+    }
+    async fn cash_get(&self, table: &str) -> surrealdb::Result<()> {
+        Ok(())
+    }
+
+    async fn share_buy(&self, table: &str) -> surrealdb::Result<()> {
+        Ok(())
+    }
+    async fn share_sell(&self, table: &str) -> surrealdb::Result<()> {
+        Ok(())
+    }
+    async fn share_get(&self, table: &str) -> surrealdb::Result<()> {
         Ok(())
     }
 
@@ -238,29 +250,42 @@ impl<'s> DB<'s> {
         Ok(())
     }
 
-    async fn cash_add(self, cash: &Cash) -> surrealdb::Result<()> {
-        let q = format!(
+    async fn cashs_add(self, cash: &Cash) -> surrealdb::Result<()> {
+        /* TODO pocket
+         ** create user
+         ** create pocket linked to user
+         ** create shares linked to pocket
+         */
+
+        /* let q = format!(
             "
+            DEFINE TABLE users SCHEMAFULL;
             CREATE users:test1 SET mail = 'user1@mail.com';
+
+            DEFINE TABLE shares SCHEMAFULL;
+            DEFINE FIELD symbol ON TABLE shares TYPE string;
+            DEFINE FIELD amount ON TABLE shares TYPE number;
+
+
             DEFINE TABLE cash SCHEMAFULL;
             DEFINE FIELD amount ON TABLE cash TYPE number;
             DEFINE FIELD currency ON TABLE cash TYPE string;
-            CREATE cash:1 SET currency = 'eur', amount = 110000;
-            CREATE cash:2 SET currency = 'eur', amount = 10000;
+            CREATE cash:1 SET currency = 'eur', amount = 110000, users:test1;
+            CREATE cash:2 SET currency = 'eur', amount = 10000, users:test1;
+
+
             RELATE users:test1->wrote->cash:1 SET time.written = time::now();
             SELECT * FROM cash:1;",
-        );
+        ); */
+
         //RELATE users:test1->wrote->cash:1 SET time.written = time::now();
 
-        let mut result = self.db.query(q).await?;
+        //let mut result = self.db.query(q).await?;
 
-        let r: Option<Record> = result.take(7)?;
-        println!("{:?}", r.unwrap());
+        //let r: Option<Record> = result.take(7)?;
+        //println!("{:?}", r.unwrap());
 
         println!("{}", "4");
-        Ok(())
-    }
-    async fn cash_get(self, table: &str) -> surrealdb::Result<()> {
         Ok(())
     }
 }
@@ -287,13 +312,15 @@ async fn main() -> surrealdb::Result<()> {
     let db = surrealdb::engine::any::connect("mem://").await?;
     db.use_ns("test").use_db("test").await?;
     let ii = DB { db: &db };
-    ii.pocket_init();
+    let table = vec!["user", "cash"];
+
+    ii.db_init(table);
 
     //add table user and cash
-    let set = vec!["user", "cash"];
-    let q = define_table(set);
-    println!("{:?}", q);
-    let mut result = db.query(q).await?;
+    //let q = define_table(table);
+    //println!("{:?}", q);
+    //let mut result = db.query(q).await?;
+
     println!("{:?}", "&cash");
     //add table user and cash DEFINE FIELD {} ON TABLE {} TYPE {}
     let set = vec![
@@ -304,9 +331,7 @@ async fn main() -> surrealdb::Result<()> {
     let q = define_field(&set);
     let mut result = db.query(q).await?;
     println!("{:?}", "&11111");
-    //("user", "mail", "user1@test.de"),
-    //    ("user", "mail", "user2@test.de"),
-    //add entries
+
     let binding1 = typeinto::Text(String::from("'eur'"));
     let binding2 = typeinto::Text(String::from("100000.0"));
     let set1: Vec<(&str, &typeinto)> = vec![("currency", &binding1), ("amount", &binding2)];
