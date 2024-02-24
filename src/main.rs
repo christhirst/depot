@@ -123,7 +123,7 @@ fn define_field(table: &Vec<(&str, &str, &str)>) -> String {
     q
 }
 
-fn create_entries(table: &HashMap<&str, Vec<(&str, &typeinto)>>) -> String {
+fn create_entries(table: &HashMap<&str, Vec<(&str, &str)>>) -> String {
     let mut q = String::from("");
     for s in table {
         let qs = format!("CREATE {}", s.0);
@@ -133,7 +133,7 @@ fn create_entries(table: &HashMap<&str, Vec<(&str, &typeinto)>>) -> String {
         for ss in s.1 {
             i += 1;
             if i == 1 {
-                q.push_str(&" SET");
+                q.push_str(" SET");
             }
             let qs = format!(" {} = {}", ss.0, ss.1);
             q.push_str(&qs);
@@ -189,13 +189,20 @@ fn into_iter_objects(
 
 // impl of Val
 impl<'s> DB<'s> {
-    async fn db_init(&self, table: Vec<&str>) -> surrealdb::Result<surrealdb::Response> {
+    async fn db_init(
+        &self,
+        table: Vec<&str>,
+        fields: &Vec<(&str, &str, &str)>,
+    ) -> surrealdb::Result<surrealdb::Response> {
         let q = define_table(table);
         let mut result = self.db.query(q).await?;
-
+        let q = define_field(fields);
+        let mut result = self.db.query(q).await?;
         Ok(result)
     }
-    async fn user_add(&self, table: &str) -> surrealdb::Result<()> {
+    async fn user_add(&self, user: &str, mail: &str) -> surrealdb::Result<()> {
+        //create_entries()
+
         Ok(())
     }
     async fn user_del(&self, table: &str) -> surrealdb::Result<()> {
@@ -206,6 +213,11 @@ impl<'s> DB<'s> {
     }
 
     async fn cash_add(&self, table: &str) -> surrealdb::Result<()> {
+        let set1: Vec<(&str, &str)> = vec![("currency", "'eur'"), ("amount", "100000.0")];
+        let mut rpg_party = HashMap::new();
+        rpg_party.insert("cash", set1);
+        create_entries(&rpg_party);
+
         Ok(())
     }
     async fn cash_del(&self, table: &str) -> surrealdb::Result<()> {
@@ -290,18 +302,18 @@ impl<'s> DB<'s> {
     }
 }
 
-enum typeinto {
+enum Typeinto {
     Int(i32),
     Float(f64),
     Text(String),
 }
 
-impl fmt::Display for typeinto {
+impl fmt::Display for Typeinto {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            typeinto::Int(a) => write!(f, "{}", a),
-            typeinto::Float(a) => write!(f, "{}", a),
-            typeinto::Text(a) => write!(f, "{}", a),
+            Typeinto::Int(a) => write!(f, "{}", a),
+            Typeinto::Float(a) => write!(f, "{}", a),
+            Typeinto::Text(a) => write!(f, "{}", a),
         }
     }
 }
@@ -312,31 +324,23 @@ async fn main() -> surrealdb::Result<()> {
     let db = surrealdb::engine::any::connect("mem://").await?;
     db.use_ns("test").use_db("test").await?;
     let ii = DB { db: &db };
-    let table = vec!["user", "cash"];
 
-    ii.db_init(table);
+    //init tables
+    let table = vec!["user", "cash", "share"];
 
-    //add table user and cash
-    //let q = define_table(table);
-    //println!("{:?}", q);
-    //let mut result = db.query(q).await?;
-
-    println!("{:?}", "&cash");
-    //add table user and cash DEFINE FIELD {} ON TABLE {} TYPE {}
+    //init fields
     let set = vec![
         ("mail", "user", "string"),
         ("currency", "cash", "string"),
         ("amount", "cash", "number"),
+        ("symbol", "share", "string"),
+        ("amount", "share", "number"),
     ];
-    let q = define_field(&set);
-    let mut result = db.query(q).await?;
-    println!("{:?}", "&11111");
+    ii.db_init(table, &set);
+    ii.cash_add("table");
 
-    let binding1 = typeinto::Text(String::from("'eur'"));
-    let binding2 = typeinto::Text(String::from("100000.0"));
-    let set1: Vec<(&str, &typeinto)> = vec![("currency", &binding1), ("amount", &binding2)];
-    let binding = typeinto::Text(String::from("'user1@mail.com'"));
-    let set2 = vec![("mail", &binding)];
+    let set1: Vec<(&str, &str)> = vec![("currency", "'eur'"), ("amount", "100000.0")];
+    let set2: Vec<(&str, &str)> = vec![("mail", "'user1@mail.com'")];
     let mut rpg_party = HashMap::new();
     rpg_party.insert("cash", set1);
     rpg_party.insert("user", set2);
