@@ -212,7 +212,7 @@ impl<'s> DB<'s> {
         Ok(())
     }
 
-    async fn cash_add(&self, table: &str) -> surrealdb::Result<()> {
+    async fn cash_add(&self, cash: (&str, &str)) -> surrealdb::Result<()> {
         let set1: Vec<(&str, &str)> = vec![("currency", "'eur'"), ("amount", "100000.0")];
         let mut rpg_party = HashMap::new();
         rpg_party.insert("cash", set1);
@@ -337,7 +337,7 @@ async fn main() -> surrealdb::Result<()> {
         ("amount", "share", "number"),
     ];
     ii.db_init(table, &set);
-    ii.cash_add("table");
+    ii.cash_add(("eur", "1000.0"));
 
     let set1: Vec<(&str, &str)> = vec![("currency", "'eur'"), ("amount", "100000.0")];
     let set2: Vec<(&str, &str)> = vec![("mail", "'user1@mail.com'")];
