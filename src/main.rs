@@ -78,7 +78,8 @@ impl Pocket {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Cash {
     pub currency: String,
-    pub amount: i64,
+    pub amount: String,
+    pub owner: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -93,7 +94,8 @@ struct Stock {
     #[allow(dead_code)]
     name: String,
     symbol: String,
-    amount: i64,
+    amount: String,
+    owner: String,
 }
 #[derive(Debug, Deserialize)]
 struct Record {
@@ -147,6 +149,7 @@ fn create_entries(table: &HashMap<&str, Vec<(&str, &str)>>) -> String {
     q
 }
 
+#[allow(unused)]
 fn relate_wrote(table: &Vec<((&str, &str), (&str, &str))>) -> String {
     let mut q = String::from("");
     for s in table {
@@ -165,12 +168,13 @@ pub enum DBError {
 }
 
 impl From<surrealdb::error::Db> for DBError {
-    fn from(value: surrealdb::error::Db) -> Self {
+    fn from(_value: surrealdb::error::Db) -> Self {
         Self::Sdb
     }
 }
 
 //Result<impl Iterator<Item = Result<Object>>, DBError>
+#[allow(unused)]
 fn into_iter_objects(
     ress: Vec<Response>,
 ) -> Result<impl Iterator<Item = Result<Object, DBError>>, DBError> {
@@ -195,73 +199,96 @@ impl<'s> DB<'s> {
         fields: &Vec<(&str, &str, &str)>,
     ) -> surrealdb::Result<surrealdb::Response> {
         let q = define_table(table);
-        let mut result = self.db.query(q).await?;
+        let _result = self.db.query(q).await?;
         let q = define_field(fields);
-        let mut result = self.db.query(q).await?;
+        let result = self.db.query(q).await?;
         Ok(result)
     }
+
+    #[allow(unused)]
     async fn user_add(&self, user: &str, mail: &str) -> surrealdb::Result<()> {
-        //create_entries()
+        //CREATE user:Tobie@web.de SET mail = 'Tobie@web.de';
 
         Ok(())
     }
+
+    #[allow(unused)]
     async fn user_del(&self, table: &str) -> surrealdb::Result<()> {
-        Ok(())
-    }
-    async fn user_get(&self, table: &str) -> surrealdb::Result<()> {
+        //DELETE person:Tobie@web.de;
         Ok(())
     }
 
-    async fn cash_add(&self, cash: (&str, &str)) -> surrealdb::Result<()> {
-        let set1: Vec<(&str, &str)> = vec![("currency", "'eur'"), ("amount", "100000.0")];
+    #[allow(unused)]
+    async fn user_get(&self, table: &str) -> surrealdb::Result<()> {
+        //DELETE person:Tobie@web.de;
+        Ok(())
+    }
+
+    async fn cash_add(&self, cash: &Cash) -> surrealdb::Result<()> {
+        //CREATE cash SET currency = 'eur', amount = 110000, owner = users:Tobie@web.de;
+        let set1: Vec<(&str, &str)> = vec![
+            ("currency", &cash.currency),
+            ("amount", &cash.amount),
+            ("owner", &cash.owner),
+        ];
         let mut rpg_party = HashMap::new();
         rpg_party.insert("cash", set1);
         create_entries(&rpg_party);
 
         Ok(())
     }
+
+    #[allow(unused)]
     async fn cash_del(&self, table: &str) -> surrealdb::Result<()> {
-        Ok(())
-    }
-    async fn cash_get(&self, table: &str) -> surrealdb::Result<()> {
+        //DELETE cash:id;
         Ok(())
     }
 
-    async fn share_buy(&self, table: &str) -> surrealdb::Result<()> {
+    #[allow(unused)]
+    async fn cash_get(&self, table: &str) -> surrealdb::Result<()> {
+        //SELECT cash:user;
         Ok(())
     }
+    #[allow(unused)]
+    async fn share_buy(&self, table: &str) -> surrealdb::Result<()> {
+        //CREATE share:2 SET sym = 'aurub', amount = 10000, owner = users:test1;
+
+        Ok(())
+    }
+    #[allow(unused)]
     async fn share_sell(&self, table: &str) -> surrealdb::Result<()> {
         Ok(())
     }
+    #[allow(unused)]
     async fn share_get(&self, table: &str) -> surrealdb::Result<()> {
         Ok(())
     }
-
+    #[allow(unused)]
     async fn flushdb(&self, table: &str) -> surrealdb::Result<Vec<Record>> {
         let rec: Vec<Record> = self.db.delete(table).await?;
         Ok(rec)
     }
-    async fn buy<'q>(&self, stock: HashMap<String, Stock>, price: i64) -> surrealdb::Result<()> {
-        // Run some queries
-        let query = "
-                CREATE person;
-                SELECT * FROM type::table($table);
-                ";
-        //add amount, add, transaction,
-        self.db.query(query).bind(("table", "person")).await?;
+    #[allow(unused)]
+    async fn buy<'q>(&self, stock: &Stock) -> surrealdb::Result<()> {
+        //CREATE shares SET name = 'British American Tobacco', symbol = 'bat', amount = 110000, owner = users:Tobie@web.de;
+        let set1: Vec<(&str, &str)> = vec![
+            ("name", &stock.name),
+            ("symbol", &stock.symbol),
+            ("amount", &stock.amount),
+            ("owner", &stock.owner),
+        ];
 
-        let pocket: Option<Pocket> = self.db.select(("test", "test")).await?;
-        let mut pocke = pocket.unwrap();
-
-        //let sto = pocke.all_stocks.get(".).unwrap();
+        let mut rpg_party = HashMap::new();
+        rpg_party.insert("shares", set1);
+        create_entries(&rpg_party);
 
         Ok(())
     }
-
+    #[allow(unused)]
     async fn stock_sell(self, table: &str) -> surrealdb::Result<()> {
         Ok(())
     }
-
+    #[allow(unused)]
     async fn cashs_add(self, cash: &Cash) -> surrealdb::Result<()> {
         /* TODO pocket
          ** create user
@@ -284,6 +311,10 @@ impl<'s> DB<'s> {
             DEFINE FIELD currency ON TABLE cash TYPE string;
             CREATE cash:1 SET currency = 'eur', amount = 110000, users:test1;
             CREATE cash:2 SET currency = 'eur', amount = 10000, users:test1;
+
+
+            CREATE share:2 SET sym = 'aurub', amount = 10000, users:test1;
+
 
 
             RELATE users:test1->wrote->cash:1 SET time.written = time::now();
@@ -330,20 +361,41 @@ async fn main() -> surrealdb::Result<()> {
 
     //init fields
     let set = vec![
+        //user
         ("mail", "user", "string"),
+        //currency
         ("currency", "cash", "string"),
+        ("owner", "cash", "record(user)"),
         ("amount", "cash", "number"),
+        //share
+        ("name", "share", "string"),
+        ("owner", "share", "record(user)"),
         ("symbol", "share", "string"),
         ("amount", "share", "number"),
     ];
-    ii.db_init(table, &set);
-    ii.cash_add(("eur", "1000.0"));
+    let u = ii.db_init(table, &set).await?;
+
+    let cash = Cash {
+        currency: String::from("eur"),
+        amount: String::from("22"),
+        owner: String::from("user:testuser1"),
+    };
+
+    let share = Stock {
+        name: String::from("British American Tobacco"),
+        symbol: String::from("bat"),
+        amount: String::from("110000"),
+        owner: String::from("user:testuser1"),
+    };
+
+    let uw = ii.cash_add(&cash).await?;
+    let uu = ii.buy(&share);
 
     let set1: Vec<(&str, &str)> = vec![("currency", "'eur'"), ("amount", "100000.0")];
     let set2: Vec<(&str, &str)> = vec![("mail", "'user1@mail.com'")];
     let mut rpg_party = HashMap::new();
     rpg_party.insert("cash", set1);
-    rpg_party.insert("user", set2);
+    rpg_party.insert("user:testuser1", set2);
 
     println!("{:?}", "&2222");
     println!("{:?}", create_entries(&rpg_party));
