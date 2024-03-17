@@ -95,6 +95,7 @@ struct Stock {
     name: String,
     symbol: String,
     amount: String,
+    price: String,
     owner: String,
 }
 #[derive(Debug, Deserialize)]
@@ -116,7 +117,7 @@ fn define_table(table: Vec<&str>) -> String {
     q
 }
 
-fn define_field(table: &Vec<(&str, &str, &str)>) -> String {
+fn define_field(table: &[(&str, &str, &str)]) -> String {
     let mut q = String::from("");
     for s in table {
         let qs = format!("DEFINE FIELD {} ON TABLE {} TYPE {};\n", s.0, s.1, s.2);
@@ -145,12 +146,37 @@ fn create_entries(table: &HashMap<&str, Vec<(&str, &str)>>) -> String {
         }
         q.push_str("; \n ");
     }
-    println!("test {}", q);
+    println!("{}", q);
+    q
+}
+
+fn update_entry(table: &HashMap<&str, Vec<(&str, &str)>>) -> String {
+    //UPDATE ONLY person:tobie SET name = 'Tobie', company = 'SurrealDB', skills = ['Rust', 'Go', 'JavaScript'];
+    let mut q = String::from("");
+    for s in table {
+        let qs = format!("UPDATE ONLY {}", s.0);
+        q.push_str(&qs);
+
+        let mut i = 0;
+        for ss in s.1 {
+            i += 1;
+            if i == 1 {
+                q.push_str(" SET");
+            }
+            let qs = format!(" {} = {}", ss.0, ss.1);
+            q.push_str(&qs);
+            if s.1.len() != i {
+                q.push(',')
+            }
+        }
+        q.push_str("; \n ");
+    }
+    println!("{}", q);
     q
 }
 
 #[allow(unused)]
-fn relate_wrote(table: &Vec<((&str, &str), (&str, &str))>) -> String {
+fn relate_wrote(table: &[((&str, &str), (&str, &str))]) -> String {
     let mut q = String::from("");
     for s in table {
         let qs = format!(
@@ -196,7 +222,9 @@ impl<'s> DB<'s> {
     async fn db_init(
         &self,
         table: Vec<&str>,
-        fields: &Vec<(&str, &str, &str)>,
+        //&[(&str, &str, &str)]
+        //&Vec<(&str, &str, &str)>
+        fields: &[(&str, &str, &str)],
     ) -> surrealdb::Result<surrealdb::Response> {
         let q = define_table(table);
         let _result = self.db.query(q).await?;
@@ -285,7 +313,27 @@ impl<'s> DB<'s> {
         Ok(())
     }
     #[allow(unused)]
-    async fn stock_sell(self, table: &str) -> surrealdb::Result<()> {
+    async fn stock_sell(&self, stock: &Stock) -> surrealdb::Result<()> {
+        /*
+        -- Update just a single record
+        -- Using the ONLY keyword, just an object for the record in question will be returned.
+        -- This, instead of an array with a single object.
+        UPDATE ONLY person:tobie SET name = 'Tobie', company = 'SurrealDB', skills = ['Rust', 'Go', 'JavaScript']; */
+        //SELECT * FROM person WHERE email='tobie@surrealdb.com' AND company='SurrealDB';
+        //select share by price
+
+        let set1: Vec<(&str, &str)> = vec![
+            ("name", &stock.name),
+            ("symbol", &stock.symbol),
+            ("amount", &stock.amount),
+            ("owner", &stock.owner),
+        ];
+
+        let mut rpg_party = HashMap::new();
+
+        rpg_party.insert("share", set1);
+        update_entry(&rpg_party);
+
         Ok(())
     }
     #[allow(unused)]
@@ -384,12 +432,22 @@ async fn main() -> surrealdb::Result<()> {
     let share = Stock {
         name: String::from("British American Tobacco"),
         symbol: String::from("bat"),
+        price: String::from(""),
         amount: String::from("110000"),
         owner: String::from("user:testuser1"),
     };
 
     let uw = ii.cash_add(&cash).await?;
     let uu = ii.buy(&share);
+    let share = Stock {
+        name: String::from("British American Tobacco"),
+        symbol: String::from("bat"),
+        price: String::from(""),
+        amount: String::from("110000"),
+        owner: String::from("user:testuser1"),
+    };
+
+    let uu = ii.stock_sell(&share);
 
     let set1: Vec<(&str, &str)> = vec![("currency", "'eur'"), ("amount", "100000.0")];
     let set2: Vec<(&str, &str)> = vec![("mail", "'user1@mail.com'")];
