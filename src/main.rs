@@ -97,6 +97,7 @@ struct Stock {
     amount: String,
     price: String,
     owner: String,
+    datebuy: String,
 }
 #[derive(Debug, Deserialize)]
 struct Record {
@@ -315,6 +316,8 @@ impl<'s> DB<'s> {
     #[allow(unused)]
     async fn stock_sell(&self, stock: &Stock) -> surrealdb::Result<()> {
         /*
+        get stock entry, from date, calculate difference amount
+        --> add cash to pocket
         -- Update just a single record
         -- Using the ONLY keyword, just an object for the record in question will be returned.
         -- This, instead of an array with a single object.
@@ -435,6 +438,7 @@ async fn main() -> surrealdb::Result<()> {
         price: String::from(""),
         amount: String::from("110000"),
         owner: String::from("user:testuser1"),
+        datebuy: String::from("2024-01-01 00:00:00"),
     };
 
     let uw = ii.cash_add(&cash).await?;
@@ -445,6 +449,7 @@ async fn main() -> surrealdb::Result<()> {
         price: String::from(""),
         amount: String::from("110000"),
         owner: String::from("user:testuser1"),
+        datebuy: String::from("2024-01-01 00:00:00"),
     };
 
     let uu = ii.stock_sell(&share);
