@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::fmt;
+use std::path::Path;
 
 #[allow(unused, dead_code)]
 use serde::{Deserialize, Serialize};
@@ -76,6 +77,12 @@ impl Pocket {
 } */
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct User {
+    pub name: String,
+    pub mail: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Cash {
     pub currency: String,
     pub amount: String,
@@ -109,10 +116,10 @@ struct DB<'a> {
     db: &'a Surreal<Any>,
 }
 
-fn define_table(table: Vec<&str>) -> String {
+fn define_table(table: &Vec<&str>) -> String {
     let mut q = String::from("");
     for s in table {
-        let qs = format!("DEFINE TABLE {} SCHEMAFULL;\n ", s);
+        let qs = format!("DEFINE TABLE {} SCHEMAFULL; ", s);
         q.push_str(&qs)
     }
     q
@@ -121,7 +128,7 @@ fn define_table(table: Vec<&str>) -> String {
 fn define_field(table: &[(&str, &str, &str)]) -> String {
     let mut q = String::from("");
     for s in table {
-        let qs = format!("DEFINE FIELD {} ON TABLE {} TYPE {};\n", s.0, s.1, s.2);
+        let qs = format!("DEFINE FIELD {} ON TABLE {} TYPE {};", s.0, s.1, s.2);
         q.push_str(&qs)
     }
     q
@@ -145,9 +152,23 @@ fn create_entries(table: &HashMap<&str, Vec<(&str, &str)>>) -> String {
                 q.push(',')
             }
         }
-        q.push_str("; \n ");
+        q.push_str("; ");
     }
-    println!("{}", q);
+    //println!("{}", q);
+    q
+}
+
+fn create_select(table: &Vec<(&str, &Vec<&str>)>) -> String {
+    let mut q = String::from("");
+    for s in table {
+        let qs = format!("{} ", s.0);
+        q.push_str(&qs);
+        for ss in s.1 {
+            let qq = format!("{} ", ss);
+            q.push_str(&qq);
+        }
+    }
+    q.push_str("; ");
     q
 }
 
@@ -170,7 +191,7 @@ fn update_entry(table: &HashMap<&str, Vec<(&str, &str)>>) -> String {
                 q.push(',')
             }
         }
-        q.push_str("; \n ");
+        q.push_str("; ");
     }
     println!("{}", q);
     q
@@ -181,7 +202,7 @@ fn relate_wrote(table: &[((&str, &str), (&str, &str))]) -> String {
     let mut q = String::from("");
     for s in table {
         let qs = format!(
-            "RELATE {}:{}->wrote->{}:{} SET time.written = time::now();\n",
+            "RELATE {}:{}->wrote->{}:{} SET time.written = time::now();",
             s.0 .0, s.0 .1, s.1 .0, s.1 .1
         );
         q.push_str(&qs)
@@ -192,11 +213,18 @@ fn relate_wrote(table: &[((&str, &str), (&str, &str))]) -> String {
 #[derive(Debug)]
 pub enum DBError {
     Sdb,
+    Db(surrealdb::Error),
 }
 
 impl From<surrealdb::error::Db> for DBError {
     fn from(_value: surrealdb::error::Db) -> Self {
         Self::Sdb
+    }
+}
+
+impl From<surrealdb::Error> for DBError {
+    fn from(_value: surrealdb::Error) -> Self {
+        Self::Db(_value)
     }
 }
 
@@ -222,7 +250,7 @@ fn into_iter_objects(
 impl<'s> DB<'s> {
     async fn db_init(
         &self,
-        table: Vec<&str>,
+        table: &Vec<&str>,
         //&[(&str, &str, &str)]
         //&Vec<(&str, &str, &str)>
         fields: &[(&str, &str, &str)],
@@ -235,10 +263,26 @@ impl<'s> DB<'s> {
     }
 
     #[allow(unused)]
-    async fn user_add(&self, user: &str, mail: &str) -> surrealdb::Result<()> {
-        //CREATE user:Tobie@web.de SET mail = 'Tobie@web.de';
+    async fn user_add(&self, u: &str, user: &User) -> Result<User, DBError> {
+        let set1: Vec<(&str, &str)> = vec![("name", &user.name), ("mail", &user.mail)];
+        let mut rpg_party = HashMap::new();
+        rpg_party.insert(u, set1);
 
-        Ok(())
+        let query = create_entries(&rpg_party);
+
+        let mut result = self.db.query(query).await?;
+        let pp: Option<User> = result.take(0).unwrap();
+        /*  println!("Failed --------!!--------- {:?}", pp);
+        let mut result = self
+            .db
+            .query("SELECT * FROM user WHERE user:testuser1;")
+            .await?; */
+        /* if let Err(e) = result.take::<Option<User>>(0) {
+            println!("Failed to make a user: {e:#?}");
+        } */
+        /* let pp: Option<User> = result.take(0).unwrap();
+        println!("Failed -----------------: {:?}", pp); */
+        pp.ok_or(DBError::Sdb)
     }
 
     #[allow(unused)]
@@ -253,7 +297,7 @@ impl<'s> DB<'s> {
         Ok(())
     }
 
-    async fn cash_add(&self, cash: &Cash) -> surrealdb::Result<()> {
+    async fn cash_add(&self, cash: &Cash) -> Result<Cash, DBError> {
         //CREATE cash SET currency = 'eur', amount = 110000, owner = users:Tobie@web.de;
         let set1: Vec<(&str, &str)> = vec![
             ("currency", &cash.currency),
@@ -262,20 +306,23 @@ impl<'s> DB<'s> {
         ];
         let mut rpg_party = HashMap::new();
         rpg_party.insert("cash", set1);
-        create_entries(&rpg_party);
-
-        Ok(())
+        let query = create_entries(&rpg_party);
+        let mut result = self.db.query(query).await?;
+        let pp: Option<Cash> = result.take(0).unwrap();
+        pp.ok_or(DBError::Sdb)
     }
 
     #[allow(unused)]
     async fn cash_del(&self, table: &str) -> surrealdb::Result<()> {
+        //SELECT * FROM cash WHERE owner='users:Tobie@web.de' AND currency='eur';
         //DELETE cash:id;
         Ok(())
     }
 
     #[allow(unused)]
     async fn cash_get(&self, table: &str) -> surrealdb::Result<()> {
-        //SELECT cash:user;
+        //SELECT * FROM cash WHERE owner='users:Tobie@web.de' AND currency='eur';
+
         Ok(())
     }
     #[allow(unused)]
@@ -299,7 +346,9 @@ impl<'s> DB<'s> {
     }
     #[allow(unused)]
     async fn buy<'q>(&self, stock: &Stock) -> surrealdb::Result<()> {
+        println!("{}", "++++++++++++++++++++++");
         //CREATE shares SET name = 'British American Tobacco', symbol = 'bat', amount = 110000, owner = users:Tobie@web.de;
+
         let set1: Vec<(&str, &str)> = vec![
             ("name", &stock.name),
             ("symbol", &stock.symbol),
@@ -307,14 +356,30 @@ impl<'s> DB<'s> {
             ("owner", &stock.owner),
         ];
 
-        let mut rpg_party = HashMap::new();
+        let mut rpg_party: HashMap<&str, Vec<(&str, &str)>> = HashMap::new();
         rpg_party.insert("shares", set1);
+
         create_entries(&rpg_party);
 
         Ok(())
     }
     #[allow(unused)]
     async fn stock_sell(&self, stock: &Stock) -> surrealdb::Result<()> {
+        //SELECT user FROM events WHERE type = 'activity' GROUP ALL;
+        let i = &vec!["symbol"];
+        let ii = &vec!["shares"];
+
+        //let cond = stock.symbol.to_owned();
+        let cond = format!("{} = {}", "symbol", stock.symbol.to_owned());
+
+        let iii = &vec![cond.as_str()];
+
+        let set2: Vec<(&str, &Vec<&str>)> = vec![("SELECT", i), ("FROM", ii), ("WHERE", iii)];
+        let oo = create_select(&set2);
+
+        let mut result = self.db.query("SELECT * FROM shares;").await?;
+        panic!("{:?}", result);
+
         /*
         get stock entry, from date, calculate difference amount
         --> add cash to pocket
@@ -401,7 +466,7 @@ impl fmt::Display for Typeinto {
 }
 
 #[tokio::main]
-async fn main() -> surrealdb::Result<()> {
+async fn main() -> Result<(), DBError> {
     // Create database connection
     let db = surrealdb::engine::any::connect("mem://").await?;
     db.use_ns("test").use_db("test").await?;
@@ -413,6 +478,7 @@ async fn main() -> surrealdb::Result<()> {
     //init fields
     let set = vec![
         //user
+        ("name", "user", "string"),
         ("mail", "user", "string"),
         //currency
         ("currency", "cash", "string"),
@@ -424,25 +490,34 @@ async fn main() -> surrealdb::Result<()> {
         ("symbol", "share", "string"),
         ("amount", "share", "number"),
     ];
-    let u = ii.db_init(table, &set).await?;
+    let u = ii.db_init(&table, &set).await?;
+
+    //create user
+    let user = User {
+        name: String::from("'testuser1'"),
+        mail: String::from("'testuser1@mail'"),
+    };
+    let uu = ii.user_add("user:testuser1", &user).await?;
+    println!("{uu:?}");
 
     let cash = Cash {
         currency: String::from("eur"),
         amount: String::from("22"),
-        owner: String::from("user:testuser1"),
+        owner: String::from("record(user:testuser1)"),
     };
+    let uw = ii.cash_add(&cash).await?;
 
     let share = Stock {
         name: String::from("British American Tobacco"),
         symbol: String::from("bat"),
         price: String::from(""),
         amount: String::from("110000"),
-        owner: String::from("user:testuser1"),
+        owner: String::from("record(user:testuser1)"),
         datebuy: String::from("2024-01-01 00:00:00"),
     };
 
-    let uw = ii.cash_add(&cash).await?;
-    let uu = ii.buy(&share);
+    let uu = ii.buy(&share).await?;
+
     let share = Stock {
         name: String::from("British American Tobacco"),
         symbol: String::from("bat"),
@@ -455,7 +530,7 @@ async fn main() -> surrealdb::Result<()> {
     let uu = ii.stock_sell(&share);
 
     let set1: Vec<(&str, &str)> = vec![("currency", "'eur'"), ("amount", "100000.0")];
-    let set2: Vec<(&str, &str)> = vec![("mail", "'user1@mail.com'")];
+    let set2: Vec<(&str, &str)> = vec![("mail", "'user1@mail.com'"), ("name", "'testuser1'")];
     let mut rpg_party = HashMap::new();
     rpg_party.insert("cash", set1);
     rpg_party.insert("user:testuser1", set2);
@@ -464,8 +539,11 @@ async fn main() -> surrealdb::Result<()> {
     println!("{:?}", create_entries(&rpg_party));
     let mut result = db.query(create_entries(&rpg_party)).await?;
 
+    let oo = ii.stock_sell(&share).await?;
+
     println!("{:?}", "&3333");
     let r: Option<Record> = result.take(0)?;
+    println!("{:?}", "&3333");
     println!("{:?}", r.unwrap());
 
     //let mut m: HashMap<String, Stock> = HashMap::new();
@@ -495,4 +573,60 @@ async fn main() -> surrealdb::Result<()> {
     //dbg!(groups);
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn urlsbuilder_test() -> Result<(), Box<dyn std::error::Error>> {
+        let table = vec!["user", "cash", "share"];
+
+        //init fields
+        let fields = vec![
+            //user
+            ("name", "user", "string"),
+        ];
+        let q = define_table(&table);
+        println!("{q:?}");
+        let q = define_field(&fields);
+        println!("{q:#?}");
+
+        let mut rpg_party = HashMap::new();
+        let set1: Vec<(&str, &str)> = vec![("currency", "'eur'"), ("amount", "100000.0")];
+        let set2: Vec<(&str, &str)> = vec![("mail", "'user1@mail.com'")];
+
+        rpg_party.insert("cash", set1);
+        rpg_party.insert("user:testuser1", set2);
+        let q = create_entries(&rpg_party);
+        println!("{q:#?}");
+
+        let i = &vec!["*"];
+        let ii = &vec!["cash"];
+
+        //let cond = stock.symbol.to_owned();
+        let cond = format!("{} = {}", "currency", "'eur'");
+
+        let iii = &vec![cond.as_str()];
+
+        let set2: Vec<(&str, &Vec<&str>)> = vec![("SELECT", i), ("FROM", ii), ("WHERE", iii)];
+
+        let q = create_select(&set2);
+        println!("{q:#?}");
+
+        /* let filename1 = "Config.toml";
+        let conf = load_or_initialize(filename1).unwrap();
+        let urlresult = format!(
+            "{}/{}+eq+{}",
+            conf.baseurl, conf.urlfilter[0].0, conf.urlfilter[0].1[0]
+        );
+
+        let n = httprequests::urlsbuilder(&conf.baseurl, &conf.urlfilter);
+        println!("{n:?}");
+        println!("--------------"); */
+
+        //assert_eq!(urlresult, n);
+        Ok(())
+    }
 }
