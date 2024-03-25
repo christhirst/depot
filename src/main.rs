@@ -88,6 +88,12 @@ pub struct Cash {
     pub amount: String,
     pub owner: String,
 }
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Cash2 {
+    pub currency: String,
+    pub amount: u32,
+    pub owner: Option<Thing>,
+}
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Pocket {
@@ -297,18 +303,19 @@ impl<'s> DB<'s> {
         Ok(())
     }
 
-    async fn cash_add(&self, cash: &Cash) -> Result<Cash, DBError> {
+    async fn cash_add(&self, cash: &Cash) -> Result<Cash2, DBError> {
         //CREATE cash SET currency = 'eur', amount = 110000, owner = users:Tobie@web.de;
         let set1: Vec<(&str, &str)> = vec![
             ("currency", &cash.currency),
             ("amount", &cash.amount),
             ("owner", &cash.owner),
         ];
-        let mut rpg_party = HashMap::new();
+        let mut rpg_party: HashMap<&str, Vec<(&str, &str)>> = HashMap::new();
         rpg_party.insert("cash", set1);
         let query = create_entries(&rpg_party);
+        print!("{:?}", query);
         let mut result = self.db.query(query).await?;
-        let pp: Option<Cash> = result.take(0).unwrap();
+        let pp: Option<Cash2> = result.take(0).unwrap();
         pp.ok_or(DBError::Sdb)
     }
 
@@ -482,8 +489,8 @@ async fn main() -> Result<(), DBError> {
         ("mail", "user", "string"),
         //currency
         ("currency", "cash", "string"),
-        ("owner", "cash", "record(user)"),
         ("amount", "cash", "number"),
+        //("owner", "cash", "record(user)"),
         //share
         ("name", "share", "string"),
         ("owner", "share", "record(user)"),
@@ -501,18 +508,18 @@ async fn main() -> Result<(), DBError> {
     println!("{uu:?}");
 
     let cash = Cash {
-        currency: String::from("eur"),
+        currency: String::from("'eur'"),
         amount: String::from("22"),
-        owner: String::from("record(user:testuser1)"),
+        owner: String::from("user:testuser1"),
     };
-    let uw = ii.cash_add(&cash).await?;
-
-    let share = Stock {
-        name: String::from("British American Tobacco"),
-        symbol: String::from("bat"),
+    let uw: Cash2 = ii.cash_add(&cash).await.unwrap();
+    println!("{uw:?}");
+    /* let share = Stock {
+        name: String::from("'British American Tobacco'"),
+        symbol: String::from("'bat'"),
         price: String::from(""),
         amount: String::from("110000"),
-        owner: String::from("record(user:testuser1)"),
+        owner: String::from("record('user:testuser1')"),
         datebuy: String::from("2024-01-01 00:00:00"),
     };
 
@@ -544,7 +551,7 @@ async fn main() -> Result<(), DBError> {
     println!("{:?}", "&3333");
     let r: Option<Record> = result.take(0)?;
     println!("{:?}", "&3333");
-    println!("{:?}", r.unwrap());
+    println!("{:?}", r.unwrap()); */
 
     //let mut m: HashMap<String, Stock> = HashMap::new();
     /*  let s = Stock {
