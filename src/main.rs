@@ -7,74 +7,11 @@ use serde::{Deserialize, Serialize};
 use surrealdb::dbs::Response;
 use surrealdb::engine::any::Any;
 
+use surrealdb::sql::{Datetime, Id};
 use surrealdb::sql::{Object, Thing, Value};
 use surrealdb::Surreal;
-/* #[derive(Debug, Deserialize, Serialize)]
-struct Stocks {
-    #[allow(dead_code)]
-    name:  String,
-    amount: u32,
-}
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Pockets {
-    all_cash: Cash,
-    all_stocks:  Vec<Stocks>,
-}
- */
-/*
-#[derive(Debug, Clone)]
-pub enum MyError {
-    // Define different variants of your error type
-    CacheError,
-    OtherError(String),
-}
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Stock {
-    name: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Cash {
-    pub euro: i64,
-}
-
-#[allow(dead_code)]
-pub struct Pocket {
-    all_cash: RwLock<Option<Vec<Cash>>>,
-    all_stocks: RwLock<Option<Vec<Stock>>>,
-}
- #[allow(dead_code)]
-impl Pocket {
-    fn new() -> Self {
-        Pocket {
-            all_cash: RwLock::new(None),
-            all_stocks: RwLock::new(None),
-        }
-    }
-    async fn all_stocks(&self) -> Option<Vec<Stock>> {
-        let lock: tokio::sync::RwLockReadGuard<'_, Option<Vec<Stock>>> =
-            self.all_stocks.read().await;
-        lock.clone()
-    }
-    async fn refresh_cash(&self, stocks: Vec<Stock>) {
-        let mut lock = self.all_stocks.write().await;
-        *lock = Some(stocks);
-    }
-    async fn refresh_stocks(&self, cash: Vec<Cash>) {
-        let mut lock = self.all_cash.write().await;
-        *lock = Some(cash);
-    }
-    async fn invalidate(&self) {
-        let mut lock = self.all_stocks.write().await;
-        *lock = None;
-    }
-
-    fn add_cash() {}
-    fn remove_cash() {}
-    fn add_stock() {}
-    fn sell_stock() {}
-} */
+use chrono::{DateTime, Utc};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct User {
@@ -84,15 +21,24 @@ pub struct User {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Cash {
+    pub timestamp: String,
     pub currency: String,
     pub amount: String,
     pub owner: String,
 }
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Cash2 {
+pub struct cash {
+    pub timestamp: DateTime<Utc>,
     pub currency: String,
     pub amount: u32,
-    pub owner: Option<Thing>,
+    pub owner: Thing,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Cashsum {
+    pub currency: String,
+    pub sum: u64,
+    pub owner: Thing,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -112,7 +58,7 @@ struct Stock {
     owner: String,
     datebuy: String,
 }
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct Record {
     #[allow(dead_code)]
     id: Thing,
@@ -178,7 +124,7 @@ fn create_select(table: &Vec<(&str, &Vec<&str>)>) -> String {
     q
 }
 
-fn update_entry(table: &HashMap<&str, Vec<(&str, &str)>>) -> String {
+fn create_update(table: &HashMap<&str, Vec<(&str, &str)>>) -> String {
     //UPDATE ONLY person:tobie SET name = 'Tobie', company = 'SurrealDB', skills = ['Rust', 'Go', 'JavaScript'];
     let mut q = String::from("");
     for s in table {
@@ -303,19 +249,58 @@ impl<'s> DB<'s> {
         Ok(())
     }
 
-    async fn cash_add(&self, cash: &Cash) -> Result<Cash2, DBError> {
-        //CREATE cash SET currency = 'eur', amount = 110000, owner = users:Tobie@web.de;
-        let set1: Vec<(&str, &str)> = vec![
-            ("currency", &cash.currency),
-            ("amount", &cash.amount),
-            ("owner", &cash.owner),
-        ];
+    async fn cash_add(&self, owner: &str, currency: &str, amount: &str) -> Result<cash, DBError> {
         let mut rpg_party: HashMap<&str, Vec<(&str, &str)>> = HashMap::new();
+        let tmp_owner = &string_wrap(owner);
+        let i = &vec!["*"];
+        let ii = &vec!["cashsum"];
+        let cond = format!("{} = {}", "owner", "'user:testuser1'");
+        let ii = &vec!["cashsum"];
+
+        let iii = &vec![cond.as_str()];
+        let set2: Vec<(&str, &Vec<&str>)> = vec![("SELECT", i), ("FROM", ii), ("WHERE", iii)];
+        let oo = create_select(&set2);
+        //"SELECT * FROM cashsum WHERE owner = 'user:testuser1';"
+        let mut result = self.db.query(oo).await?;
+        let ii: Option<Cashsum> = result.take(0).unwrap();
+        if ii.is_none() {
+            let set1: Vec<(&str, &str)> = vec![
+                ("owner", tmp_owner),
+                ("currency", currency),
+                ("sum", amount),
+            ];
+            rpg_party.insert("cashsum", set1);
+        } else {
+            //UPDATE
+            let mut rpg_party = HashMap::new();
+            let set1: Vec<(&str, &str)> = vec![
+                ("owner", tmp_owner),
+                ("currency", currency),
+                ("sum", amount),
+            ];
+            rpg_party.insert("cashsum", set1);
+            create_update(&rpg_party);
+        }
+
+        //CREATE cash SET currency = 'eur', amount = 110000, owner = users:Tobie@web.de;
+        let timenow = format!("'{}'", Utc::now().to_rfc3339());
+
+        let mut set1: Vec<(&str, &str)> = vec![
+            ("timestamp", &timenow),
+            ("owner", tmp_owner),
+            ("currency", currency),
+            ("amount", amount),
+        ];
+
         rpg_party.insert("cash", set1);
         let query = create_entries(&rpg_party);
-        print!("{:?}", query);
-        let mut result = self.db.query(query).await?;
-        let pp: Option<Cash2> = result.take(0).unwrap();
+        println!("{:?}", query);
+        let mut result: surrealdb::Response = self.db.query(query).await?;
+        let pp: Option<Cashsum> = result.take(0).unwrap();
+        println!("{:?}", pp.unwrap());
+
+        let pp: Option<cash> = result.take(1).unwrap();
+        println!("{:?}", pp.clone().unwrap());
         pp.ok_or(DBError::Sdb)
     }
 
@@ -372,6 +357,11 @@ impl<'s> DB<'s> {
     }
     #[allow(unused)]
     async fn stock_sell(&self, stock: &Stock) -> surrealdb::Result<()> {
+        let mut result = self
+            .db
+            .query("SELECT * FROM cashsum WHERE owner = 'user:testuser1';")
+            .await?;
+
         //SELECT user FROM events WHERE type = 'activity' GROUP ALL;
         let i = &vec!["symbol"];
         let ii = &vec!["shares"];
@@ -407,7 +397,7 @@ impl<'s> DB<'s> {
         let mut rpg_party = HashMap::new();
 
         rpg_party.insert("share", set1);
-        update_entry(&rpg_party);
+        create_update(&rpg_party);
 
         Ok(())
     }
@@ -472,15 +462,22 @@ impl fmt::Display for Typeinto {
     }
 }
 
+fn string_wrap(s: &str) -> String {
+    format!("'{}'", s)
+}
+
 #[tokio::main]
 async fn main() -> Result<(), DBError> {
+    let now: DateTime<Utc> = Utc::now();
+    println!("{}", now.to_rfc3339());
+
     // Create database connection
     let db = surrealdb::engine::any::connect("mem://").await?;
     db.use_ns("test").use_db("test").await?;
     let ii = DB { db: &db };
 
     //init tables
-    let table = vec!["user", "cash", "share"];
+    let table = vec!["user", "cash", "share", "cashsum"];
 
     //init fields
     let set = vec![
@@ -488,9 +485,14 @@ async fn main() -> Result<(), DBError> {
         ("name", "user", "string"),
         ("mail", "user", "string"),
         //currency
+        ("timestamp", "cash", "datetime"),
         ("currency", "cash", "string"),
         ("amount", "cash", "number"),
-        //("owner", "cash", "record(user)"),
+        ("owner", "cash", "record(user)"),
+        //cashsum
+        ("owner", "cashsum", "record(user)"),
+        ("currency", "cashsum", "string"),
+        ("sum", "cashsum", "number"),
         //share
         ("name", "share", "string"),
         ("owner", "share", "record(user)"),
@@ -498,21 +500,16 @@ async fn main() -> Result<(), DBError> {
         ("amount", "share", "number"),
     ];
     let u = ii.db_init(&table, &set).await?;
-
+    let tb_user1 = String::from("user:testuser1");
     //create user
     let user = User {
         name: String::from("'testuser1'"),
         mail: String::from("'testuser1@mail'"),
     };
-    let uu = ii.user_add("user:testuser1", &user).await?;
+    let uu = ii.user_add(&tb_user1, &user).await?;
     println!("{uu:?}");
 
-    let cash = Cash {
-        currency: String::from("'eur'"),
-        amount: String::from("22"),
-        owner: String::from("user:testuser1"),
-    };
-    let uw: Cash2 = ii.cash_add(&cash).await.unwrap();
+    let uw: cash = ii.cash_add(&tb_user1, "'eur'", "22").await.unwrap();
     println!("{uw:?}");
     /* let share = Stock {
         name: String::from("'British American Tobacco'"),
