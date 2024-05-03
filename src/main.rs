@@ -149,13 +149,18 @@ fn create_update(table: &HashMap<&str, Vec<(&str, &str)>>) -> String {
     q
 }
 
+struct Relate<'a> {
+    source: (&'a str, &'a str),
+    target: (&'a str, &'a str),
+}
+//&[((&str, &str), (&str, &str))]
 #[allow(unused)]
-fn relate_wrote(table: &[((&str, &str), (&str, &str))]) -> String {
+fn relate_wrote(table: &[Relate]) -> String {
     let mut q = String::from("");
     for s in table {
         let qs = format!(
             "RELATE {}:{}->wrote->{}:{} SET time.written = time::now();",
-            s.0 .0, s.0 .1, s.1 .0, s.1 .1
+            s.source.0, s.source.1, s.target.0, s.target.1
         );
         q.push_str(&qs)
     }
@@ -253,7 +258,7 @@ impl<'s> DB<'s> {
         let mut rpg_party: HashMap<&str, Vec<(&str, &str)>> = HashMap::new();
         let tmp_owner = &string_wrap(owner);
         let i = &vec!["*"];
-        let ii = &vec!["cashsum"];
+        //let ii = &vec!["cashsum"];
         let cond = format!("{} = {}", "owner", "'user:testuser1'");
         let ii = &vec!["cashsum"];
 
@@ -285,7 +290,7 @@ impl<'s> DB<'s> {
         //CREATE cash SET currency = 'eur', amount = 110000, owner = users:Tobie@web.de;
         let timenow = format!("'{}'", Utc::now().to_rfc3339());
 
-        let mut set1: Vec<(&str, &str)> = vec![
+        let set1: Vec<(&str, &str)> = vec![
             ("timestamp", &timenow),
             ("owner", tmp_owner),
             ("currency", currency),
@@ -338,7 +343,7 @@ impl<'s> DB<'s> {
     }
     #[allow(unused)]
     async fn buy<'q>(&self, stock: &Stock) -> surrealdb::Result<()> {
-        println!("{}", "++++++++++++++++++++++");
+        //println!("{}", "++++++++++++++++++++++");
         //CREATE shares SET name = 'British American Tobacco', symbol = 'bat', amount = 110000, owner = users:Tobie@web.de;
 
         let set1: Vec<(&str, &str)> = vec![
@@ -441,11 +446,12 @@ impl<'s> DB<'s> {
         //let r: Option<Record> = result.take(7)?;
         //println!("{:?}", r.unwrap());
 
-        println!("{}", "4");
+        println!("4");
         Ok(())
     }
 }
 
+#[allow(unused)]
 enum Typeinto {
     Int(i32),
     Float(f64),
@@ -499,7 +505,7 @@ async fn main() -> Result<(), DBError> {
         ("symbol", "share", "string"),
         ("amount", "share", "number"),
     ];
-    let u = ii.db_init(&table, &set).await?;
+    let _u = ii.db_init(&table, &set).await?;
     let tb_user1 = String::from("user:testuser1");
     //create user
     let user = User {
