@@ -270,31 +270,45 @@ impl<'s> DB<'s> {
     async fn cash_add(&self, owner: &str, currency: &str, amount: &str) -> Result<cash, DBError> {
         let tmp_owner = &string_wrap(owner);
 
-        let cond = format!("{} = {}", "owner", "'user:testuser1'");
-        let oo = create_select(&vec![
-            ("SELECT", vec!["*"]),
-            ("FROM", vec!["cashsum"]),
-            ("WHERE", vec![cond.as_str()]),
-        ]);
-
         let mut rpg_party: HashMap<&str, Vec<(&str, &str)>> = HashMap::new();
         let timenow = format!("'{}'", Utc::now().to_rfc3339());
 
-        let set1: Vec<(&str, &str)> = vec![
+        rpg_party.insert(
+            "cash",
+            vec![
+                ("timestamp", &timenow),
+                ("owner", tmp_owner),
+                ("currency", currency),
+                ("amount", amount),
+            ],
+        );
+        let query = create_entries(&rpg_party);
+        //println!("{:?}", query);
+        let mut result: surrealdb::Response = self.db.query(query).await?;
+        let pps: Option<cash> = result.take(0).unwrap();
+        /* println!("{:?}", pps.clone().unwrap());
+
+        println!("{:?}", "########!!!######"); */
+        pps.ok_or(DBError::Sdb)
+    }
+
+    /*
+    let set1: Vec<(&str, &str)> = vec![
             ("timestamp", &timenow),
             ("owner", tmp_owner),
             ("currency", currency),
             ("amount", amount),
         ];
+    let cond = format!("{} = {}", "owner", "'user:testuser1'");
 
-        rpg_party.insert("cash", set1);
-        let query = create_entries(&rpg_party);
-        println!("{:?}", query);
-        let mut result: surrealdb::Response = self.db.query(query).await?;
-        let pps: Option<cash> = result.take(0).unwrap();
-        println!("{:?}", pps.clone().unwrap());
+        let oo = create_select(&vec![
+                ("SELECT", vec!["*"]),
+                ("FROM", vec!["cashsum"]),
+                ("WHERE", vec![cond.as_str()]),
+            ]);
 
-        let mut result: surrealdb::Response = self
+
+          let mut result: surrealdb::Response = self
             .db
             .query("return (SELECT total from (SELECT math::sum(amount) AS total, currency FROM cash GROUP BY currency));")
             .await?;
@@ -305,10 +319,7 @@ impl<'s> DB<'s> {
             Some(v) => Ok(v),
             None => Err(DBError::Sdb),
         };
-        jj;
-        println!("{:?}", "########!!!######");
-        pps.ok_or(DBError::Sdb)
-    }
+        jj; */
 
     #[allow(unused)]
     async fn cash_del(&self, table: &str) -> surrealdb::Result<()> {
@@ -323,6 +334,16 @@ impl<'s> DB<'s> {
 
         Ok(())
     }
+    #[allow(unused)]
+    async fn sum_get(&self, table: &str) -> surrealdb::Result<()> {
+        //SELECT * FROM cash WHERE owner='users:Tobie@web.de' AND currency='eur';
+        let mut result: surrealdb::Response = self
+        .db
+        .query("return (SELECT total from (SELECT math::sum(amount) AS total, currency FROM cash GROUP BY currency));")
+        .await?;
+        Ok(())
+    }
+
     #[allow(unused)]
     async fn share_buy(&self, table: &str) -> surrealdb::Result<()> {
         //CREATE share:2 SET sym = 'aurub', amount = 10000, owner = users:test1;
