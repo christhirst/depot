@@ -1,12 +1,13 @@
+#[allow(unused, dead_code)]
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::path::Path;
-
-#[allow(unused, dead_code)]
-use serde::{Deserialize, Serialize};
 use surrealdb::dbs::Response;
 use surrealdb::engine::any::Any;
+use surrealdb::opt::auth::Root;
 
+use surrealdb::engine::remote::ws::{Client, Ws};
 use surrealdb::sql::{Datetime, Id};
 use surrealdb::sql::{Object, Thing, Value};
 use surrealdb::Surreal;
@@ -39,6 +40,18 @@ pub struct Cashsum {
     pub currency: String,
     pub sum: u64,
     pub owner: Thing,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct cashsum {
+    pub currency: String,
+    pub sum: u64,
+    pub owner: Thing,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ob {
+    pub total: f64,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -110,12 +123,12 @@ fn create_entries(table: &HashMap<&str, Vec<(&str, &str)>>) -> String {
     q
 }
 
-fn create_select(table: &Vec<(&str, &Vec<&str>)>) -> String {
+fn create_select(table: &Vec<(&str, Vec<&str>)>) -> String {
     let mut q = String::from("");
     for s in table {
         let qs = format!("{} ", s.0);
         q.push_str(&qs);
-        for ss in s.1 {
+        for ss in &s.1 {
             let qq = format!("{} ", ss);
             q.push_str(&qq);
         }
@@ -255,39 +268,16 @@ impl<'s> DB<'s> {
     }
 
     async fn cash_add(&self, owner: &str, currency: &str, amount: &str) -> Result<cash, DBError> {
-        let mut rpg_party: HashMap<&str, Vec<(&str, &str)>> = HashMap::new();
         let tmp_owner = &string_wrap(owner);
-        let i = &vec!["*"];
-        //let ii = &vec!["cashsum"];
+
         let cond = format!("{} = {}", "owner", "'user:testuser1'");
-        let ii = &vec!["cashsum"];
+        let oo = create_select(&vec![
+            ("SELECT", vec!["*"]),
+            ("FROM", vec!["cashsum"]),
+            ("WHERE", vec![cond.as_str()]),
+        ]);
 
-        let iii = &vec![cond.as_str()];
-        let set2: Vec<(&str, &Vec<&str>)> = vec![("SELECT", i), ("FROM", ii), ("WHERE", iii)];
-        let oo = create_select(&set2);
-        //"SELECT * FROM cashsum WHERE owner = 'user:testuser1';"
-        let mut result = self.db.query(oo).await?;
-        let ii: Option<Cashsum> = result.take(0).unwrap();
-        if ii.is_none() {
-            let set1: Vec<(&str, &str)> = vec![
-                ("owner", tmp_owner),
-                ("currency", currency),
-                ("sum", amount),
-            ];
-            rpg_party.insert("cashsum", set1);
-        } else {
-            //UPDATE
-            let mut rpg_party = HashMap::new();
-            let set1: Vec<(&str, &str)> = vec![
-                ("owner", tmp_owner),
-                ("currency", currency),
-                ("sum", amount),
-            ];
-            rpg_party.insert("cashsum", set1);
-            create_update(&rpg_party);
-        }
-
-        //CREATE cash SET currency = 'eur', amount = 110000, owner = users:Tobie@web.de;
+        let mut rpg_party: HashMap<&str, Vec<(&str, &str)>> = HashMap::new();
         let timenow = format!("'{}'", Utc::now().to_rfc3339());
 
         let set1: Vec<(&str, &str)> = vec![
@@ -301,12 +291,23 @@ impl<'s> DB<'s> {
         let query = create_entries(&rpg_party);
         println!("{:?}", query);
         let mut result: surrealdb::Response = self.db.query(query).await?;
-        let pp: Option<Cashsum> = result.take(0).unwrap();
-        println!("{:?}", pp.unwrap());
+        let pps: Option<cash> = result.take(0).unwrap();
+        println!("{:?}", pps.clone().unwrap());
 
-        let pp: Option<cash> = result.take(1).unwrap();
-        println!("{:?}", pp.clone().unwrap());
-        pp.ok_or(DBError::Sdb)
+        let mut result: surrealdb::Response = self
+            .db
+            .query("return (SELECT total from (SELECT math::sum(amount) AS total, currency FROM cash GROUP BY currency));")
+            .await?;
+        println!("{:?}", "##############");
+        println!("{:?}", result);
+        let ppr: Option<ob> = result.take(0)?;
+        let jj = match ppr {
+            Some(v) => Ok(v),
+            None => Err(DBError::Sdb),
+        };
+        jj;
+        println!("{:?}", "########!!!######");
+        pps.ok_or(DBError::Sdb)
     }
 
     #[allow(unused)]
@@ -368,15 +369,15 @@ impl<'s> DB<'s> {
             .await?;
 
         //SELECT user FROM events WHERE type = 'activity' GROUP ALL;
-        let i = &vec!["symbol"];
-        let ii = &vec!["shares"];
+        let i = vec!["symbol"];
+        let ii = vec!["shares"];
 
         //let cond = stock.symbol.to_owned();
         let cond = format!("{} = {}", "symbol", stock.symbol.to_owned());
 
-        let iii = &vec![cond.as_str()];
+        let iii = vec![cond.as_str()];
 
-        let set2: Vec<(&str, &Vec<&str>)> = vec![("SELECT", i), ("FROM", ii), ("WHERE", iii)];
+        let set2: Vec<(&str, Vec<&str>)> = vec![("SELECT", i), ("FROM", ii), ("WHERE", iii)];
         let oo = create_select(&set2);
 
         let mut result = self.db.query("SELECT * FROM shares;").await?;
@@ -479,6 +480,15 @@ async fn main() -> Result<(), DBError> {
 
     // Create database connection
     let db = surrealdb::engine::any::connect("mem://").await?;
+    // Connect to the server
+    //let db = Surreal::new::<Ws>("0.0.0.0:8080").await?;
+    // Signin as a namespace, database, or root user
+    /* db.signin(Root {
+        username: "root",
+        password: "root",
+    })
+    .await?; */
+
     db.use_ns("test").use_db("test").await?;
     let ii = DB { db: &db };
 
