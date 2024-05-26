@@ -429,7 +429,7 @@ impl<'s> DB<'s> {
         Ok(())
     }
     #[allow(unused)]
-    async fn cashs_add(self, cash: &Cash) -> surrealdb::Result<()> {
+    async fn cashes_add(self, cash: &Cash) -> surrealdb::Result<()> {
         /* TODO pocket
          ** create user
          ** create pocket linked to user
@@ -643,15 +643,15 @@ mod tests {
         let q = create_entries(&rpg_party);
         println!("{q:#?}");
 
-        let i = &vec!["*"];
-        let ii = &vec!["cash"];
+        let i = vec!["*"];
+        let ii = vec!["cash"];
 
         //let cond = stock.symbol.to_owned();
         let cond = format!("{} = {}", "currency", "'eur'");
 
-        let iii = &vec![cond.as_str()];
+        let iii = vec![cond.as_str()];
 
-        let set2: Vec<(&str, &Vec<&str>)> = vec![("SELECT", i), ("FROM", ii), ("WHERE", iii)];
+        let set2: Vec<(&str, Vec<&str>)> = vec![("SELECT", i), ("FROM", ii), ("WHERE", iii)];
 
         let q = create_select(&set2);
         println!("{q:#?}");
