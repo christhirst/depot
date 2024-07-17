@@ -12,3 +12,4 @@ serde = { version = "1", features = ["derive"] }
 surrealdb = { version = "1", features = ["kv-mem"] }
 tokio = { version = "1.37.0", features = ["macros"] }
 chrono = "0.4"
+thiserror = "1"

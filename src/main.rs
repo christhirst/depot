@@ -6,16 +6,32 @@ use std::path::Path;
 use surrealdb::dbs::Response;
 use surrealdb::engine::any::Any;
 use surrealdb::opt::auth::Root;
-
+mod cash;
+mod stock;
+mod user;
 use surrealdb::engine::remote::ws::{Client, Ws};
 use surrealdb::sql::{Datetime, Id};
 use surrealdb::sql::{Object, Thing, Value};
 use surrealdb::Surreal;
+use thiserror::Error;
 
 use chrono::{DateTime, Utc};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Error, Debug)]
+pub enum DBError {
+    #[error("Database error")]
+    Sdb,
+    #[error("Database error")]
+    Db(surrealdb::Error),
+    #[error("eee")]
+    OO(),
+    #[error("Cash error")]
+    CashErr(),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct User {
+    pub id: Thing,
     pub name: String,
     pub mail: String,
 }
@@ -27,12 +43,55 @@ pub struct Cash {
     pub amount: String,
     pub owner: String,
 }
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct cash {
-    pub timestamp: DateTime<Utc>,
-    pub currency: String,
-    pub amount: u32,
-    pub owner: Thing,
+
+pub struct Pocket {
+    db: Surreal<Any>,
+    name: String,
+    owner: String,
+    all_cash: HashMap<String, Cash>,
+    all_stocks: HashMap<String, Stock>,
+}
+
+impl Pocket {
+    async fn init(mut self) -> Result<(), DBError> {
+        let now: DateTime<Utc> = Utc::now();
+        println!("{}", now.to_rfc3339());
+
+        // Create database connection
+        self.db = surrealdb::engine::any::connect("mem://").await?;
+        Ok(())
+    }
+
+    //Result<(), DBError>
+    async fn new(self, name: String, owner: String) -> Self {
+        let now: DateTime<Utc> = Utc::now();
+        println!("{}", now.to_rfc3339());
+
+        // Create database connection
+
+        let mut all_cash = HashMap::new();
+        all_cash.insert(
+            "cash".to_owned(),
+            Cash {
+                timestamp: todo!(),
+                currency: todo!(),
+                amount: todo!(),
+                owner,
+            },
+        );
+    }
+
+    fn add_cash(&self) -> Option<Cash> {
+        todo!()
+    }
+
+    fn stock_buy(&self) -> Option<Stock> {
+        todo!()
+    }
+
+    fn stock_sell(&self) -> Option<Stock> {
+        todo!()
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -42,12 +101,12 @@ pub struct Cashsum {
     pub owner: Thing,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+/* #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct cashsum {
     pub currency: String,
     pub sum: u64,
     pub owner: Thing,
-}
+} */
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ob {
@@ -55,19 +114,13 @@ pub struct ob {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct Pocket {
-    name: String,
-    all_cash: Cash,
-    all_stocks: HashMap<String, Stock>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
 struct Stock {
     #[allow(dead_code)]
+    //id: Thing,
     name: String,
     symbol: String,
-    amount: String,
-    price: String,
+    amount: i64,
+    price: f64,
     owner: String,
     datebuy: String,
 }
@@ -77,10 +130,9 @@ struct Record {
     id: Thing,
 }
 
-struct DB<'a> {
-    db: &'a Surreal<Any>,
+pub fn thing_to_string(id: Thing) -> String {
+    format!("{}:{}", id.tb, id.id)
 }
-
 fn define_table(table: &Vec<&str>) -> String {
     let mut q = String::from("");
     for s in table {
@@ -180,12 +232,6 @@ fn relate_wrote(table: &[Relate]) -> String {
     q
 }
 
-#[derive(Debug)]
-pub enum DBError {
-    Sdb,
-    Db(surrealdb::Error),
-}
-
 impl From<surrealdb::error::Db> for DBError {
     fn from(_value: surrealdb::error::Db) -> Self {
         Self::Sdb
@@ -216,6 +262,10 @@ fn into_iter_objects(
     }
 }
 
+struct DB<'a> {
+    db: &'a Surreal<Client>,
+}
+
 // impl of Val
 impl<'s> DB<'s> {
     async fn db_init(
@@ -230,246 +280,6 @@ impl<'s> DB<'s> {
         let q = define_field(fields);
         let result = self.db.query(q).await?;
         Ok(result)
-    }
-
-    #[allow(unused)]
-    async fn user_add(&self, u: &str, user: &User) -> Result<User, DBError> {
-        let set1: Vec<(&str, &str)> = vec![("name", &user.name), ("mail", &user.mail)];
-        let mut rpg_party = HashMap::new();
-        rpg_party.insert(u, set1);
-
-        let query = create_entries(&rpg_party);
-
-        let mut result = self.db.query(query).await?;
-        let pp: Option<User> = result.take(0).unwrap();
-        /*  println!("Failed --------!!--------- {:?}", pp);
-        let mut result = self
-            .db
-            .query("SELECT * FROM user WHERE user:testuser1;")
-            .await?; */
-        /* if let Err(e) = result.take::<Option<User>>(0) {
-            println!("Failed to make a user: {e:#?}");
-        } */
-        /* let pp: Option<User> = result.take(0).unwrap();
-        println!("Failed -----------------: {:?}", pp); */
-        pp.ok_or(DBError::Sdb)
-    }
-
-    #[allow(unused)]
-    async fn user_del(&self, table: &str) -> surrealdb::Result<()> {
-        //DELETE person:Tobie@web.de;
-        Ok(())
-    }
-
-    #[allow(unused)]
-    async fn user_get(&self, table: &str) -> surrealdb::Result<()> {
-        //DELETE person:Tobie@web.de;
-        Ok(())
-    }
-
-    async fn cash_add(&self, owner: &str, currency: &str, amount: &str) -> Result<cash, DBError> {
-        let tmp_owner = &string_wrap(owner);
-
-        let mut rpg_party: HashMap<&str, Vec<(&str, &str)>> = HashMap::new();
-        let timenow = format!("'{}'", Utc::now().to_rfc3339());
-
-        rpg_party.insert(
-            "cash",
-            vec![
-                ("timestamp", &timenow),
-                ("owner", tmp_owner),
-                ("currency", currency),
-                ("amount", amount),
-            ],
-        );
-        let query = create_entries(&rpg_party);
-        //println!("{:?}", query);
-        let mut result: surrealdb::Response = self.db.query(query).await?;
-        let pps: Option<cash> = result.take(0).unwrap();
-        /* println!("{:?}", pps.clone().unwrap());
-
-        println!("{:?}", "########!!!######"); */
-        pps.ok_or(DBError::Sdb)
-    }
-
-    /*
-    let set1: Vec<(&str, &str)> = vec![
-            ("timestamp", &timenow),
-            ("owner", tmp_owner),
-            ("currency", currency),
-            ("amount", amount),
-        ];
-    let cond = format!("{} = {}", "owner", "'user:testuser1'");
-
-        let oo = create_select(&vec![
-                ("SELECT", vec!["*"]),
-                ("FROM", vec!["cashsum"]),
-                ("WHERE", vec![cond.as_str()]),
-            ]);
-
-
-          let mut result: surrealdb::Response = self
-            .db
-            .query("return (SELECT total from (SELECT math::sum(amount) AS total, currency FROM cash GROUP BY currency));")
-            .await?;
-        println!("{:?}", "##############");
-        println!("{:?}", result);
-        let ppr: Option<ob> = result.take(0)?;
-        let jj = match ppr {
-            Some(v) => Ok(v),
-            None => Err(DBError::Sdb),
-        };
-        jj; */
-
-    #[allow(unused)]
-    async fn cash_del(&self, table: &str) -> surrealdb::Result<()> {
-        //SELECT * FROM cash WHERE owner='users:Tobie@web.de' AND currency='eur';
-        //DELETE cash:id;
-        Ok(())
-    }
-
-    #[allow(unused)]
-    async fn cash_get(&self, table: &str) -> surrealdb::Result<()> {
-        //SELECT * FROM cash WHERE owner='users:Tobie@web.de' AND currency='eur';
-
-        Ok(())
-    }
-    #[allow(unused)]
-    async fn sum_get(&self, table: &str) -> surrealdb::Result<()> {
-        //SELECT * FROM cash WHERE owner='users:Tobie@web.de' AND currency='eur';
-        let mut result: surrealdb::Response = self
-        .db
-        .query("return (SELECT total from (SELECT math::sum(amount) AS total, currency FROM cash GROUP BY currency));")
-        .await?;
-        Ok(())
-    }
-
-    #[allow(unused)]
-    async fn share_buy(&self, table: &str) -> surrealdb::Result<()> {
-        //CREATE share:2 SET sym = 'aurub', amount = 10000, owner = users:test1;
-
-        Ok(())
-    }
-    #[allow(unused)]
-    async fn share_sell(&self, table: &str) -> surrealdb::Result<()> {
-        Ok(())
-    }
-    #[allow(unused)]
-    async fn share_get(&self, table: &str) -> surrealdb::Result<()> {
-        Ok(())
-    }
-    #[allow(unused)]
-    async fn flushdb(&self, table: &str) -> surrealdb::Result<Vec<Record>> {
-        let rec: Vec<Record> = self.db.delete(table).await?;
-        Ok(rec)
-    }
-    #[allow(unused)]
-    async fn buy<'q>(&self, stock: &Stock) -> surrealdb::Result<()> {
-        //println!("{}", "++++++++++++++++++++++");
-        //CREATE shares SET name = 'British American Tobacco', symbol = 'bat', amount = 110000, owner = users:Tobie@web.de;
-
-        let set1: Vec<(&str, &str)> = vec![
-            ("name", &stock.name),
-            ("symbol", &stock.symbol),
-            ("amount", &stock.amount),
-            ("owner", &stock.owner),
-        ];
-
-        let mut rpg_party: HashMap<&str, Vec<(&str, &str)>> = HashMap::new();
-        rpg_party.insert("shares", set1);
-
-        create_entries(&rpg_party);
-
-        Ok(())
-    }
-    #[allow(unused)]
-    async fn stock_sell(&self, stock: &Stock) -> surrealdb::Result<()> {
-        let mut result = self
-            .db
-            .query("SELECT * FROM cashsum WHERE owner = 'user:testuser1';")
-            .await?;
-
-        //SELECT user FROM events WHERE type = 'activity' GROUP ALL;
-        let i = vec!["symbol"];
-        let ii = vec!["shares"];
-
-        //let cond = stock.symbol.to_owned();
-        let cond = format!("{} = {}", "symbol", stock.symbol.to_owned());
-
-        let iii = vec![cond.as_str()];
-
-        let set2: Vec<(&str, Vec<&str>)> = vec![("SELECT", i), ("FROM", ii), ("WHERE", iii)];
-        let oo = create_select(&set2);
-
-        let mut result = self.db.query("SELECT * FROM shares;").await?;
-        panic!("{:?}", result);
-
-        /*
-        get stock entry, from date, calculate difference amount
-        --> add cash to pocket
-        -- Update just a single record
-        -- Using the ONLY keyword, just an object for the record in question will be returned.
-        -- This, instead of an array with a single object.
-        UPDATE ONLY person:tobie SET name = 'Tobie', company = 'SurrealDB', skills = ['Rust', 'Go', 'JavaScript']; */
-        //SELECT * FROM person WHERE email='tobie@surrealdb.com' AND company='SurrealDB';
-        //select share by price
-
-        let set1: Vec<(&str, &str)> = vec![
-            ("name", &stock.name),
-            ("symbol", &stock.symbol),
-            ("amount", &stock.amount),
-            ("owner", &stock.owner),
-        ];
-
-        let mut rpg_party = HashMap::new();
-
-        rpg_party.insert("share", set1);
-        create_update(&rpg_party);
-
-        Ok(())
-    }
-    #[allow(unused)]
-    async fn cashes_add(self, cash: &Cash) -> surrealdb::Result<()> {
-        /* TODO pocket
-         ** create user
-         ** create pocket linked to user
-         ** create shares linked to pocket
-         */
-
-        /* let q = format!(
-            "
-            DEFINE TABLE users SCHEMAFULL;
-            CREATE users:test1 SET mail = 'user1@mail.com';
-
-            DEFINE TABLE shares SCHEMAFULL;
-            DEFINE FIELD symbol ON TABLE shares TYPE string;
-            DEFINE FIELD amount ON TABLE shares TYPE number;
-
-
-            DEFINE TABLE cash SCHEMAFULL;
-            DEFINE FIELD amount ON TABLE cash TYPE number;
-            DEFINE FIELD currency ON TABLE cash TYPE string;
-            CREATE cash:1 SET currency = 'eur', amount = 110000, users:test1;
-            CREATE cash:2 SET currency = 'eur', amount = 10000, users:test1;
-
-
-            CREATE share:2 SET sym = 'aurub', amount = 10000, users:test1;
-
-
-
-            RELATE users:test1->wrote->cash:1 SET time.written = time::now();
-            SELECT * FROM cash:1;",
-        ); */
-
-        //RELATE users:test1->wrote->cash:1 SET time.written = time::now();
-
-        //let mut result = self.db.query(q).await?;
-
-        //let r: Option<Record> = result.take(7)?;
-        //println!("{:?}", r.unwrap());
-
-        println!("4");
-        Ok(())
     }
 }
 
@@ -494,21 +304,42 @@ fn string_wrap(s: &str) -> String {
     format!("'{}'", s)
 }
 
+async fn initdb(s: &str) -> Result<Surreal<Client>, DBError> {
+    let db: Surreal<Client>;
+
+    /* if s == "mem" {
+        //db = surrealdb::engine::any::connect("mem://").await?;
+    } else {
+        db = Surreal::new::<Ws>("0.0.0.0:8080").await?;
+    } */
+    db = Surreal::new::<Ws>("0.0.0.0:8080").await?;
+    db.signin(Root {
+        username: "root",
+        password: "root",
+    })
+    .await?;
+
+    db.use_ns("test").use_db("test").await?;
+    Ok(db)
+}
+
 #[tokio::main]
 async fn main() -> Result<(), DBError> {
     let now: DateTime<Utc> = Utc::now();
     println!("{}", now.to_rfc3339());
 
+    let db = initdb("e").await?;
+
     // Create database connection
-    let db = surrealdb::engine::any::connect("mem://").await?;
+    //let db = surrealdb::engine::any::connect("mem://").await?;
     // Connect to the server
     //let db = Surreal::new::<Ws>("0.0.0.0:8080").await?;
     // Signin as a namespace, database, or root user
-    /* db.signin(Root {
+    db.signin(Root {
         username: "root",
         password: "root",
     })
-    .await?; */
+    .await?;
 
     db.use_ns("test").use_db("test").await?;
     let ii = DB { db: &db };
@@ -539,26 +370,29 @@ async fn main() -> Result<(), DBError> {
     let _u = ii.db_init(&table, &set).await?;
     let tb_user1 = String::from("user:testuser1");
     //create user
+    let i = Id::from("testuser11");
+    let t = Thing {
+        id: i,
+        tb: "user".to_owned(),
+    };
+
     let user = User {
+        id: t,
         name: String::from("'testuser1'"),
         mail: String::from("'testuser1@mail'"),
     };
-    let uu = ii.user_add(&tb_user1, &user).await?;
-    println!("{uu:?}");
-
-    let uw: cash = ii.cash_add(&tb_user1, "'eur'", "22").await.unwrap();
+    /* let uw: cash = ii.cash_add(&tb_user1, "'eur'", "22").await.unwrap();
     println!("{uw:?}");
-    /* let share = Stock {
+    let share = Stock {
         name: String::from("'British American Tobacco'"),
         symbol: String::from("'bat'"),
-        price: String::from(""),
+        price: String::from("11"),
         amount: String::from("110000"),
         owner: String::from("record('user:testuser1')"),
         datebuy: String::from("2024-01-01 00:00:00"),
-    };
+    }; */
 
-    let uu = ii.buy(&share).await?;
-
+    /*
     let share = Stock {
         name: String::from("British American Tobacco"),
         symbol: String::from("bat"),
@@ -587,21 +421,6 @@ async fn main() -> Result<(), DBError> {
     println!("{:?}", "&3333");
     println!("{:?}", r.unwrap()); */
 
-    //let mut m: HashMap<String, Stock> = HashMap::new();
-    /*  let s = Stock {
-              name: "teste".to_owned(),
-              symbol: "teste".to_owned(),
-              amount: 2,
-          };
-
-       m.insert("stock".to_owned(), s);
-
-    let p = Pocket {
-        name: "pocketname".to_owned(),
-        all_cash: Cash { euro: 0 },
-        all_stocks: m,
-    };  */
-
     // Update a person record with a specific id
     /* let updated: Option<Record> = db
     .update(("stock", "ii"))
@@ -619,6 +438,87 @@ async fn main() -> Result<(), DBError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn db_test() {
+        let u = initdb("mem").await.is_ok();
+
+        assert!(u);
+    }
+
+    #[tokio::test]
+    async fn create_table() -> Result<(), DBError> {
+        let db = initdb("e").await?;
+        let ii = DB { db: &db };
+        let table = vec!["user"];
+
+        //init fields
+        let set = vec![
+            //user
+            ("name", "user", "string"),
+            ("mail", "user", "string"),
+        ];
+
+        let resp = ii.db_init(&table, &set).await?;
+
+        let err = resp.check();
+        println!("{:?}", err);
+        Ok(())
+    }
+
+    #[test]
+    fn dele_entry() {
+        let i = vec!["symbol"];
+        let ii = vec!["shares"];
+
+        //let cond = stock.symbol.to_owned();
+        let cond = format!("{} = {}", "symbol", "sym");
+
+        let iii = vec![cond.as_str()];
+
+        let set2: Vec<(&str, Vec<&str>)> = vec![("SELECT", i), ("FROM", ii), ("WHERE", iii)];
+        let q = create_select(&set2);
+        println!("{q:?}");
+        assert_eq!(q, "SELECT symbol FROM shares WHERE symbol = sym ; ")
+    }
+
+    /* #[tokio::test]
+        async fn search_entry() -> Result<(), DBError> {
+           let db = initdb("mem").await?;
+            let qqq = DB { db: &db };
+
+            let select = vec!["*"];
+            let from = vec!["user"];
+            let cond = format!("{} = {}", "mail", "'testuser1@mail'");
+            let wher = vec![cond.as_str()];
+
+            let set2: Vec<(&str, Vec<&str>)> =
+                vec![("SELECT", select), ("FROM", from), ("WHERE", wher)];
+
+            let q = create_select(&set2);
+
+            let share = Stock {
+                name: String::from("'British American Tobacco'"),
+                symbol: String::from("'bat'"),
+                price: String::from("11"),
+                amount: String::from("110000"),
+                owner: String::from("record('user:testuser1')"),
+                datebuy: String::from("2024-01-01 00:00:00"),
+            };
+            let oo = qqq.stock_sell(&share).await?;
+
+            println!("{oo:?}");
+            Ok(())
+        }
+    */
+    #[test]
+    fn delete_entr() -> Result<(), Box<dyn std::error::Error>> {
+        todo!()
+    }
+    #[test]
+    fn get_sum() -> Result<(), Box<dyn std::error::Error>> {
+        todo!()
+    }
 
     #[test]
     fn urlsbuilder_test() -> Result<(), Box<dyn std::error::Error>> {
