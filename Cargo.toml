@@ -9,7 +9,13 @@ resolver = "2"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
-surrealdb = { version = "1", features = ["kv-mem"] }
-tokio = { version = "1.37.0", features = ["macros"] }
-chrono = "0.4"
+tokio = { version = "1.37.0", features = ["full"] }
 thiserror = "1"
+tracing = "0.1"# for our async runtime
+tracing-subscriber = "0.3"
+
+axum = "0.7"
+
+[lib]
+name = "db_service"
+path = "db_service/src/lib.rs"

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::Thing;
 
-use crate::{db_helper::thing_to_string, DBError, Record, User, DB};
+use crate::{db_helper::thing_to_string, model::DBError, Record, User, DB};
 
 //TODO CASH ADD
 //TODO BUY C

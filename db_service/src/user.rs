@@ -1,6 +1,7 @@
+use crate::model::DBError;
+use crate::DB;
+use crate::{create_entries, db_helper::thing_to_string, User};
 use std::collections::HashMap;
-
-use crate::{create_entries, db_helper::thing_to_string, DBError, User, DB};
 
 impl<'s> DB<'s> {
     #[allow(unused)]
