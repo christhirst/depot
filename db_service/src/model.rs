@@ -1,5 +1,6 @@
 use std::fmt;
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::Thing;
 
@@ -33,7 +34,7 @@ pub struct Stock {
     pub amount: i64,
     pub price: f64,
     pub owner: Thing, //String,
-    pub datebuy: String,
+    pub datebuy: DateTime<Utc>,
 }
 
 #[allow(unused)]

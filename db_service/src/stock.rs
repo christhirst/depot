@@ -35,13 +35,13 @@ pub struct ID {
 
 impl DB {
     #[allow(unused)]
-    async fn flushdb(&self, table: &str) -> surrealdb::Result<Vec<Record>> {
+    pub async fn flushdb(&self, table: &str) -> surrealdb::Result<Vec<Record>> {
         let rec: Vec<Record> = self.db.delete(table).await?;
         Ok(rec)
     }
 
     #[allow(unused)]
-    async fn share_buy(&self, stock: &Stock) -> Result<bool, DBError> {
+    pub async fn share_buy(&self, stock: &Stock) -> Result<bool, DBError> {
         //get Cash state with margin
         let cash = self.cash_sum(&stock.owner, "eur").await?;
         //check if cash is enough with 5% margin
@@ -62,7 +62,7 @@ impl DB {
             Err(DBError::CashErr())
         }
     }
-    async fn share_sum(&self, stock: &str) -> Result<i64, DBError> {
+    pub async fn share_sum(&self, stock: &str) -> Result<i64, DBError> {
         //SELECT math::sum(amount) AS sum,symbol FROM share WHERE symbol = 'bat' GROUP BY symbol;
         let query = format!(
             "SELECT math::sum(amount) AS sum, symbol FROM share WHERE symbol = '{}' GROUP BY symbol;",
@@ -77,7 +77,7 @@ impl DB {
     }
 
     #[allow(unused)]
-    async fn share_sell(&self, stock: &Stock) -> Result<bool, DBError> {
+    pub async fn share_sell(&self, stock: &Stock) -> Result<bool, DBError> {
         let amount = self.share_sum(&stock.symbol).await?;
         if (amount + stock.amount > 0) && stock.amount < 0 {
             Err(DBError::OO())
@@ -103,7 +103,7 @@ impl DB {
         }
     }
     #[allow(unused)]
-    async fn shares_mean_price(&self, symbol: &str) -> Result<f64, DBError> {
+    pub async fn shares_mean_price(&self, symbol: &str) -> Result<f64, DBError> {
         let query = format!(
             "SELECT price, amount FROM share WHERE symbol = '{}';",
             symbol,
@@ -115,7 +115,7 @@ impl DB {
     }
 
     #[allow(unused)]
-    pub async fn shares_select(&self, tb: &str, s: &Stock) -> Result<Vec<ID>, DBError> {
+    pub async fn shares_select(&self, tb: &str, s: &Stock) -> Result<Vec<Stock>, DBError> {
         let query = format!(
             "SELECT id FROM {} WHERE  symbol = '{}' AND 
             amount = {} AND price = {} AND owner = '{}' AND
@@ -124,7 +124,7 @@ impl DB {
         );
         print!("{}", query);
         let mut result = self.db.query(query).await?;
-        let shares: Vec<ID> = result.take(0)?;
+        let shares: Vec<Stock> = result.take(0)?;
         Ok(shares)
     }
 

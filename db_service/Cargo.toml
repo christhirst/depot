@@ -8,3 +8,4 @@ tokio = { version = "1.37.0", features = ["rt", "sync"] }
 surrealdb = { version = "1", features = ["kv-mem"] }
 serde = { version = "1", features = ["derive"] }
 thiserror = "1"
+chrono =  "0.4"

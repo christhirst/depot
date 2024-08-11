@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use crate::error::Resultc;
 use crate::{ctx::Ctx, error};
 use chrono::{DateTime, Utc};
-use db_service::model::Cash;
+use db_service::model::{Cash, Stock};
 use db_service::DB;
 use serde::{Deserialize, Serialize};
 use surrealdb::engine::remote::ws::Client;
@@ -24,7 +24,7 @@ pub enum DBError {
     CashErr(),
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+/* #[derive(Debug, Deserialize, Serialize)]
 pub struct Stock {
     //id: Thing,
     pub name: String,
@@ -33,7 +33,7 @@ pub struct Stock {
     pub price: f64,
     pub owner: Thing, //String,
     pub datebuy: DateTime<Utc>,
-}
+} */
 
 // region:    --- Ticket Types
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -67,7 +67,56 @@ impl ModelController {
 
 // CRUD Implementation
 impl ModelController {
+    pub async fn stock_buy(&self, ctx: Ctx, stock: Stock) -> Resultc<Stock> {
+        //let mut store = self.tickets_store.lock().unwrap();
+        let owner = Thing::from(("user", ctx.user_id().to_string().as_ref()));
+
+        let stock = Stock { owner, ..stock };
+
+        let cash = self.db.share_buy(&stock).await?;
+
+        Ok(stock)
+    }
+
+    pub async fn stock_sell(&self, ctx: Ctx, stock: Stock) -> Resultc<Stock> {
+        let mut store = self.tickets_store.lock().unwrap();
+
+        let cash = self.db.share_sell(&stock).await?;
+        //store.push(Some(ticket.clone()));
+
+        //Ok(ticket)
+
+        Ok(stock)
+    }
+    pub async fn stock_get(&self, ctx: Ctx, stock: Stock) -> Resultc<Vec<Stock>> {
+        let mut store = self.tickets_store.lock().unwrap();
+
+        let cash = self.db.shares_select("&cash", &stock).await?;
+        //store.push(Some(ticket.clone()));
+
+        Ok(cash)
+    }
+
+    pub async fn stock_list(&self, ctx: Ctx, cash: db_service::model::Cash) -> Resultc<Ticket> {
+        let mut store = self.tickets_store.lock().unwrap();
+
+        /* let cash = self.db.cash_add(cash).await?;
+        store.push(Some(ticket.clone()));
+
+        Ok(ticket) */
+        todo!()
+    }
     pub async fn cash_add(&self, ctx: Ctx, cash: db_service::model::Cash) -> Resultc<Ticket> {
+        let mut store = self.tickets_store.lock().unwrap();
+
+        /* let cash = self.db.cash_add(cash).await?;
+        store.push(Some(ticket.clone()));
+
+        Ok(ticket) */
+        todo!()
+    }
+
+    pub async fn cash_pull(&self, ctx: Ctx, cash: db_service::model::Cash) -> Resultc<Ticket> {
         let mut store = self.tickets_store.lock().unwrap();
 
         /* let cash = self.db.cash_add(cash).await?;
@@ -89,14 +138,6 @@ impl ModelController {
         let tickets = store.iter().filter_map(|t| t.clone()).collect();
 
         Ok(tickets)
-    }
-
-    pub async fn delete_ticket(&self, _ctx: Ctx, id: u64) -> Resultc<Ticket> {
-        let mut store = self.tickets_store.lock().unwrap();
-
-        let ticket = store.get_mut(id as usize).and_then(|t| t.take());
-
-        ticket.ok_or(error::Error::TicketDeleteFailIdNotFound { id })
     }
 }
 

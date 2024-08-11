@@ -6,7 +6,7 @@ use serde::Serialize;
 
 pub type Resultc<T> = core::result::Result<T, Error>;
 
-#[derive(thiserror::Error, Clone, Debug, Serialize)]
+#[derive(thiserror::Error, Debug, Serialize)]
 #[serde(tag = "type", content = "data")]
 pub enum Error {
     #[error("Database error")]
@@ -23,6 +23,9 @@ pub enum Error {
     // -- Model errors.
     #[error("Database error")]
     TicketDeleteFailIdNotFound { id: u64 },
+
+    #[error("Database error")]
+    DBError(#[from] db_service::model::DBError),
 }
 impl IntoResponse for Error {
     fn into_response(self) -> Response {

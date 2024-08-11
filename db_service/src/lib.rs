@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use surrealdb::{engine::remote::ws::Client, sql::Thing, Surreal};
+
 pub mod cash;
 pub mod db_helper;
 pub mod model;

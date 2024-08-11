@@ -53,7 +53,7 @@ pub async fn mw_ctx_resolver(
     }
 
     // Store the ctx_result in the request extension.
-    req.extensions_mut().insert(result_ctx);
+    //req.extensions_mut().insert(result_ctx);
 
     Ok(next.run(req).await)
 }
