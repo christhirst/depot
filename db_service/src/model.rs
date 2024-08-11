@@ -17,6 +17,14 @@ pub enum DBError {
     CashErr(),
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Cash {
+    pub currency: String,
+    pub amount: f64,
+    pub owner: Thing,
+    pub timestamp: String,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Stock {
     //id: Thing,

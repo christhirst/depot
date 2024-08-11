@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::{Id, Thing};
 
-use crate::{cash::Cash, model::Stock, DBError, Record, User, DB};
+use crate::{
+    model::{Cash, DBError, Stock},
+    Record, User, DB,
+};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct sum {
@@ -30,7 +33,7 @@ pub struct ID {
     id: Thing,
 }
 
-impl<'s> DB<'s> {
+impl DB {
     #[allow(unused)]
     async fn flushdb(&self, table: &str) -> surrealdb::Result<Vec<Record>> {
         let rec: Vec<Record> = self.db.delete(table).await?;

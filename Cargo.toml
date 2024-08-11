@@ -9,12 +9,19 @@ resolver = "2"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 tokio = { version = "1.37.0", features = ["full"] }
+async-trait = "0.1"
 thiserror = "1"
 tracing = "0.1"# for our async runtime
 tracing-subscriber = "0.3"
-
-axum = "0.7"
+surrealdb = { version = "1", features = ["kv-mem"] }
+axum = { version = "0.7" }
+tower-http = { version = "0.4", features = ["fs"] }
+tower-cookies = "0.10"
+strum_macros = "0.25"
+lazy-regex = "3"
+chrono = "0.4"
 
 [lib]
 name = "db_service"

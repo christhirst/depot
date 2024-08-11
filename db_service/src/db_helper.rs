@@ -54,7 +54,7 @@ pub async fn initdb(s: &str) -> Result<Surreal<Client>, DBError> {
 }
 
 // impl of Val
-impl<'s> DB<'s> {
+impl DB {
     pub async fn db_init(
         &self,
         table: &Vec<&str>,

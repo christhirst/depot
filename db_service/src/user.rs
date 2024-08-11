@@ -3,7 +3,7 @@ use crate::DB;
 use crate::{create_entries, db_helper::thing_to_string, User};
 use std::collections::HashMap;
 
-impl<'s> DB<'s> {
+impl DB {
     #[allow(unused)]
     pub async fn user_add(&self, user: &User) -> Result<User, DBError> {
         let set1: Vec<(&str, &str)> = vec![("name", &user.name), ("mail", &user.mail)];

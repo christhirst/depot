@@ -1,19 +1,11 @@
+use crate::model::Cash;
+use crate::{db_helper::thing_to_string, model::DBError, Record, User, DB};
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::Thing;
-
-use crate::{db_helper::thing_to_string, model::DBError, Record, User, DB};
 
 //TODO CASH ADD
 //TODO BUY C
 //TODO SELL C
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Cash {
-    pub currency: String,
-    pub amount: f64,
-    pub owner: Thing,
-    pub timestamp: String,
-}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Cashsum {
@@ -29,7 +21,7 @@ struct SharesPrice {
     price: f64,
 }
 
-impl<'s> DB<'s> {
+impl DB {
     #[allow(unused)]
     pub async fn cash_entry(&self, c: &Cash) -> Result<Record, DBError> {
         //SELECT * FROM cash WHERE owner='users:Tobie@web.de' AND currency='eur';
@@ -51,12 +43,12 @@ impl<'s> DB<'s> {
         Ok(true)
     }
     #[allow(unused)]
-    pub async fn cash_add(&self, user: &User) -> Result<User, DBError> {
+    pub async fn cash_add(&self, cash: &Cash) -> Result<User, DBError> {
         todo!()
     }
 
     #[allow(unused)]
-    pub async fn cash_get(&self, table: &str) -> surrealdb::Result<()> {
+    pub fn cash_get(&self, table: &str) -> surrealdb::Result<()> {
         //SELECT * FROM cash WHERE owner='users:Tobie@web.de' AND currency='eur';
 
         Ok(())

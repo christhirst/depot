@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use surrealdb::{engine::remote::ws::Client, sql::Thing, Surreal};
-
-mod cash;
+pub mod cash;
 pub mod db_helper;
-mod model;
+pub mod model;
+pub mod stock;
 mod user;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -21,8 +21,9 @@ struct Record {
     id: Thing,
 }
 
-pub struct DB<'a> {
-    pub db: &'a Surreal<Client>,
+#[derive(Debug, Clone)]
+pub struct DB {
+    pub db: Surreal<Client>,
 }
 
 pub fn add(left: usize, right: usize) -> usize {
@@ -51,6 +52,11 @@ fn create_entries(table: &HashMap<&str, Vec<(&str, &str)>>) -> String {
     }
     //println!("{}", q);
     q
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    todo!()
 }
 
 #[cfg(test)]
