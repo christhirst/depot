@@ -16,14 +16,10 @@ mod web;
 use crate::model::ModelController;
 use axum::{
     extract::Query,
-    http::{status, StatusCode},
-    middleware,
     response::{Html, IntoResponse, Response},
-    routing::{get, get_service},
+    routing::get,
     Extension, Router,
 };
-use tower_cookies::{CookieManager, CookieManagerLayer};
-use tower_http::services::ServeDir;
 /* #[derive(Debug)]
 pub enum Errorc {
     LoginFail,
@@ -175,9 +171,9 @@ struct DB<'a> {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let db = db_service::db_helper::initdb("e").await?;
-
+    let db = surrealdb::engine::any::connect("mem://").await.unwrap();
     db.use_ns("test").use_db("test").await?;
-    let db = db_service::DB { db: db };
+    let db = db_service::DB { db };
 
     //init tables
     let table = vec!["user", "cash", "share", "cashsum"];

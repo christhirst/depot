@@ -1,7 +1,11 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use surrealdb::{engine::remote::ws::Client, sql::Thing, Surreal};
+use surrealdb::{
+    engine::{any::Any, remote::ws::Client},
+    sql::Thing,
+    Surreal,
+};
 
 pub mod cash;
 pub mod db_helper;
@@ -17,14 +21,14 @@ pub struct User {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-struct Record {
+pub struct Record {
     #[allow(dead_code)]
-    id: Thing,
+    pub id: Thing,
 }
 
 #[derive(Debug, Clone)]
 pub struct DB {
-    pub db: Surreal<Client>,
+    pub db: Surreal<Any>,
 }
 
 pub fn add(left: usize, right: usize) -> usize {

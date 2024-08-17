@@ -2,7 +2,9 @@ use std::fmt;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use surrealdb::engine::any;
 use surrealdb::sql::Thing;
+use surrealdb::Surreal;
 
 //use tonic_reflection::server::Error as Grpc_Error;
 
@@ -16,10 +18,13 @@ pub enum DBError {
     OO(),
     #[error("Cash error")]
     CashErr(),
+    #[error("{0}")]
+    SDA(String),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Cash {
+    pub id: Option<Thing>,
     pub currency: String,
     pub amount: f64,
     pub owner: Thing,
@@ -28,13 +33,22 @@ pub struct Cash {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Stock {
-    //id: Thing,
+    pub id: Option<Thing>,
     pub name: String,
     pub symbol: String,
     pub amount: i64,
     pub price: f64,
     pub owner: Thing, //String,
     pub datebuy: DateTime<Utc>,
+}
+
+impl Default for Stock {
+    fn default() -> Stock {
+        Stock {
+            id: None,
+            ..Default::default()
+        }
+    }
 }
 
 #[allow(unused)]

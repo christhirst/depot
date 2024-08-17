@@ -1,14 +1,13 @@
 use std::sync::{Arc, Mutex};
 
+use crate::ctx::Ctx;
 use crate::error::Resultc;
-use crate::{ctx::Ctx, error};
-use chrono::{DateTime, Utc};
-use db_service::model::{Cash, Stock};
+use db_service::model::Cash;
+use db_service::model::Stock;
+use db_service::Record;
 use db_service::DB;
 use serde::{Deserialize, Serialize};
-use surrealdb::engine::remote::ws::Client;
 use surrealdb::sql::Thing;
-use surrealdb::Surreal;
 use thiserror::Error;
 //use tonic_reflection::server::Error as Grpc_Error;
 
@@ -69,19 +68,24 @@ impl ModelController {
 impl ModelController {
     pub async fn stock_buy(&self, ctx: Ctx, stock: Stock) -> Resultc<Stock> {
         //let mut store = self.tickets_store.lock().unwrap();
-        let owner = Thing::from(("user", ctx.user_id().to_string().as_ref()));
+        let stock = Stock {
+            owner: Thing::from(("user", ctx.user_id().to_string().as_ref())),
+            ..stock
+        };
 
-        let stock = Stock { owner, ..stock };
-
-        let cash = self.db.share_buy(&stock).await?;
+        let _cash = self.db.share_buy(&stock).await?;
 
         Ok(stock)
     }
 
     pub async fn stock_sell(&self, ctx: Ctx, stock: Stock) -> Resultc<Stock> {
-        let mut store = self.tickets_store.lock().unwrap();
+        //let mut _store = self.tickets_store.lock().unwrap();
+        let stock = Stock {
+            owner: Thing::from(("user", ctx.user_id().to_string().as_ref())),
+            ..stock
+        };
 
-        let cash = self.db.share_sell(&stock).await?;
+        let _cash = self.db.share_sell(&stock).await.unwrap();
         //store.push(Some(ticket.clone()));
 
         //Ok(ticket)
@@ -89,35 +93,25 @@ impl ModelController {
         Ok(stock)
     }
     pub async fn stock_get(&self, ctx: Ctx, stock: Stock) -> Resultc<Vec<Stock>> {
-        let mut store = self.tickets_store.lock().unwrap();
+        //let mut store = self.tickets_store.lock().unwrap();
 
-        let cash = self.db.shares_select("&cash", &stock).await?;
-        //store.push(Some(ticket.clone()));
+        let cash = self.db.shares_select("share", &stock).await?;
+        Ok(cash)
+    }
+
+    pub async fn table_flush(&self, _ctx: Ctx, tb: &str) -> Resultc<Vec<Stock>> {
+        let cash = self.db.flushdb(tb).await?;
+
+        Ok(cash)
+    }
+    pub async fn cash_add(&self, _ctx: Ctx, cash: Cash) -> Resultc<Record> {
+        let cash = self.db.cash_entry(&cash).await?;
 
         Ok(cash)
     }
 
-    pub async fn stock_list(&self, ctx: Ctx, cash: db_service::model::Cash) -> Resultc<Ticket> {
-        let mut store = self.tickets_store.lock().unwrap();
-
-        /* let cash = self.db.cash_add(cash).await?;
-        store.push(Some(ticket.clone()));
-
-        Ok(ticket) */
-        todo!()
-    }
-    pub async fn cash_add(&self, ctx: Ctx, cash: db_service::model::Cash) -> Resultc<Ticket> {
-        let mut store = self.tickets_store.lock().unwrap();
-
-        /* let cash = self.db.cash_add(cash).await?;
-        store.push(Some(ticket.clone()));
-
-        Ok(ticket) */
-        todo!()
-    }
-
-    pub async fn cash_pull(&self, ctx: Ctx, cash: db_service::model::Cash) -> Resultc<Ticket> {
-        let mut store = self.tickets_store.lock().unwrap();
+    pub async fn cash_pull(&self, _ctx: Ctx, _cash: db_service::model::Cash) -> Resultc<Ticket> {
+        //let mut _store = self.tickets_store.lock().unwrap();
 
         /* let cash = self.db.cash_add(cash).await?;
         store.push(Some(ticket.clone()));

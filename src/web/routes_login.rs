@@ -4,7 +4,7 @@ use crate::Error;
 use axum::routing::post;
 use axum::Json;
 use axum::Router;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{json, Value};
 use tower_cookies::{Cookie, Cookies};
 

@@ -35,13 +35,13 @@ pub struct ID {
 
 impl DB {
     #[allow(unused)]
-    pub async fn flushdb(&self, table: &str) -> surrealdb::Result<Vec<Record>> {
-        let rec: Vec<Record> = self.db.delete(table).await?;
+    pub async fn flushdb(&self, table: &str) -> Result<Vec<Stock>, DBError> {
+        let rec: Vec<Stock> = self.db.delete(table).await?;
         Ok(rec)
     }
 
     #[allow(unused)]
-    pub async fn share_buy(&self, stock: &Stock) -> Result<bool, DBError> {
+    pub async fn share_buy(&self, stock: &Stock) -> Result<Record, DBError> {
         //get Cash state with margin
         let cash = self.cash_sum(&stock.owner, "eur").await?;
         //check if cash is enough with 5% margin
@@ -55,9 +55,9 @@ impl DB {
                     stock.owner,
                     stock.datebuy,
                 );
-            self.db.query(query).await?;
-
-            Ok(true)
+            let mut resp = self.db.query(query).await?;
+            let created: Option<Record> = resp.take(0)?;
+            created.ok_or(DBError::Sdb)
         } else {
             Err(DBError::CashErr())
         }
@@ -77,7 +77,7 @@ impl DB {
     }
 
     #[allow(unused)]
-    pub async fn share_sell(&self, stock: &Stock) -> Result<bool, DBError> {
+    pub async fn share_sell(&self, stock: &Stock) -> Result<Record, DBError> {
         let amount = self.share_sum(&stock.symbol).await?;
         if (amount + stock.amount > 0) && stock.amount < 0 {
             Err(DBError::OO())
@@ -87,6 +87,7 @@ impl DB {
             let amount = stock.amount as f64 * stock.price;
 
             let cash = Cash {
+                id: None,
                 currency: String::from("eur"),
                 amount,
                 owner: Thing {
@@ -99,7 +100,7 @@ impl DB {
             let cashadded = self.cash_entry(&cash).await?;
             Ok(res)
         } else {
-            Ok(false)
+            Err(DBError::Sdb)
         }
     }
     #[allow(unused)]
@@ -117,7 +118,7 @@ impl DB {
     #[allow(unused)]
     pub async fn shares_select(&self, tb: &str, s: &Stock) -> Result<Vec<Stock>, DBError> {
         let query = format!(
-            "SELECT id FROM {} WHERE  symbol = '{}' AND 
+            "SELECT id FROM {} WHERE symbol = '{}' AND 
             amount = {} AND price = {} AND owner = '{}' AND
              datebuy = '{}';",
             tb, s.symbol, s.amount, s.price, s.owner, s.datebuy
@@ -235,6 +236,7 @@ mod tests {
         println!("{}", now.to_rfc3339());
 
         let share = Stock {
+            id: None,
             name: String::from("British American Tobacco"),
             symbol: String::from("bat"),
             amount: 5,
@@ -248,6 +250,7 @@ mod tests {
         let now = Utc::now();
         let formatted = now.format("%Y-%m-%dT%H:%M:%SZ").to_string();
         let cash = Cash {
+            id: None,
             currency: String::from("eur"),
             amount: 200.0,
             owner: Thing {
@@ -277,7 +280,7 @@ mod tests {
         let ii = DB { db: &db };
 
         let share = Stock {
-            //id: id,
+            id: id,
             name: String::from("British American Tobacco"),
             symbol: String::from("bat"),
             amount: 110000,
@@ -308,7 +311,7 @@ mod tests {
         let db = initdb("e").await?;
         let ii = DB { db: &db };
         let share = Stock {
-            //id: id,
+            id: None,
             name: String::from("British American Tobacco"),
             symbol: String::from("bat"),
             amount: -110000,
@@ -341,7 +344,7 @@ mod tests {
         let db = initdb("e").await?;
         let ii = DB { db: &db };
         let share = Stock {
-            //id: id,
+            id: None,
             name: String::from("British American Tobacco"),
             symbol: String::from("bat"),
             amount: 110000,

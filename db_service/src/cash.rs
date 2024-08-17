@@ -36,23 +36,24 @@ impl DB {
         Ok(rec)
     }
     #[allow(unused)]
-    pub async fn cash_remove(&self, table: &str) -> Result<bool, DBError> {
-        //SELECT * FROM cash WHERE owner='users:Tobie@web.de' AND currency='eur';
-        //DELETE cash:id;
-
-        Ok(true)
-    }
-    #[allow(unused)]
-    pub async fn cash_add(&self, cash: &Cash) -> Result<User, DBError> {
-        todo!()
+    pub async fn cash_remove(&self, t: &Thing) -> Result<Cash, DBError> {
+        let mut resp: Option<Cash> = self.db.delete(t).await?;
+        resp.ok_or(DBError::Sdb)
     }
 
     #[allow(unused)]
-    pub fn cash_get(&self, table: &str) -> surrealdb::Result<()> {
+    pub async fn cash_get_by_currency(&self, c: &Cash) -> Result<Vec<Cash>, DBError> {
         //SELECT * FROM cash WHERE owner='users:Tobie@web.de' AND currency='eur';
-
-        Ok(())
+        //SELECT * FROM cash WHERE 'eur' INSIDE  currency;
+        let query = format!(
+            "SELECT * FROM cash WHERE owner = '{}' AND {} INSIDE currency ;",
+            c.owner, c.currency
+        );
+        let mut resp = self.db.query(query).await?;
+        let res = resp.take(0)?;
+        Ok(res)
     }
+
     #[allow(unused)]
     pub async fn sum_get(&self, table: &str) -> surrealdb::Result<()> {
         //SELECT * FROM cash WHERE owner='users:Tobie@web.de' AND currency='eur';

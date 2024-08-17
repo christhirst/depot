@@ -28,7 +28,7 @@ pub async fn mw_require_auth(
 pub async fn mw_ctx_resolver(
     _mc: State<ModelController>,
     cookies: Cookies,
-    mut req: Request<Body>,
+    req: Request<Body>,
     next: Next,
 ) -> Resultc<Response> {
     println!("->> {:<12} - mw_ctx_resolver", "MIDDLEWARE");
@@ -63,7 +63,7 @@ pub async fn mw_ctx_resolver(
 impl<S: Send + Sync> FromRequestParts<S> for Ctx {
     type Rejection = Error;
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Resultc<Self> {
+    async fn from_request_parts(_parts: &mut Parts, _state: &S) -> Resultc<Self> {
         println!("->> {:<12} - Ctx", "EXTRACTOR");
 
         /* parts

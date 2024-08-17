@@ -1,5 +1,8 @@
 use surrealdb::{
-    engine::remote::ws::{Client, Ws},
+    engine::{
+        any::Any,
+        remote::ws::{Client, Ws},
+    },
     opt::auth::Root,
     sql::Thing,
     Surreal,
@@ -33,7 +36,7 @@ pub fn define_field(table: &[(&str, &str, &str)]) -> String {
     q
 }
 
-pub async fn initdb(s: &str) -> Result<Surreal<Client>, DBError> {
+pub async fn initdb(s: &str) -> Result<Surreal<Any>, DBError> {
     let _ = s;
     let db: Surreal<Client>;
 
@@ -42,7 +45,7 @@ pub async fn initdb(s: &str) -> Result<Surreal<Client>, DBError> {
     } else {
         db = Surreal::new::<Ws>("0.0.0.0:8080").await?;
     } */
-    db = Surreal::new::<Ws>("0.0.0.0:8080").await?;
+    let db = surrealdb::engine::any::connect("ws://0.0.0.0:8080").await?;
     db.signin(Root {
         username: "root",
         password: "root",

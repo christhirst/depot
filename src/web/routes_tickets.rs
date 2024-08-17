@@ -1,13 +1,11 @@
-use std::any::Any;
-
 use crate::ctx::Ctx;
-use crate::error::{Error, Resultc};
+use crate::error;
+use crate::error::Resultc;
 //use crate::middleware::middleware_header;
 use crate::model::{ModelController, Ticket, TicketForCreate};
 use axum::extract::{Path, State};
 use axum::routing::{delete, get, post};
-use axum::{middleware, Json, Router};
-use chrono::DateTime;
+use axum::{Json, Router};
 use db_service::model::Stock;
 //use db_service::model::Stock;
 use surrealdb::sql::Thing;
@@ -16,11 +14,13 @@ pub fn routes(mc: ModelController) -> Router {
     Router::new()
         //.route_layer(middleware::from_fn(f))
         .route("/stock_buy", post(stock_buy))
-        .route("/stock_sell/:id", delete(stock_sell))
-        .route("/stock_get/:id", get(stock_get))
-        .route("/stock_list/", get(stock_list))
+        .route("/stock_sell/", delete(stock_sell))
+        .route("/stock_get/:id", get(trade_get))
+        .route("/stock_list/:id", get(stock_list))
+        .route("/cash_add/", post(stock_list))
+        .route("/cash_withdraw/", post(stock_list))
         .route(
-            "/cash/",
+            "/cash_sum/",
             get(stock_list).post(stock_list).delete(stock_list),
         )
         .with_state(mc)
@@ -34,12 +34,7 @@ async fn stock_buy(
     Json(stock): Json<Stock>,
 ) -> Resultc<Json<Stock>> {
     println!("->> {:?} - Stock buy", stock);
-    //let id = ctx.user_id();
-    let o = "tb";
-    let owner = Thing::from((o, "user"));
-    let result = mc.stock_buy(ctx, stock).await?;
-
-    Ok(Json(result))
+    Ok(Json(mc.stock_buy(ctx, stock).await?))
 }
 
 async fn stock_sell(
@@ -49,16 +44,28 @@ async fn stock_sell(
     Json(stock): Json<Stock>,
 ) -> Resultc<Json<Stock>> {
     println!("->> {:?} - Stock sell", stock);
-    let res = mc.stock_sell(ctx, stock).await?;
 
-    Ok(Json(res))
-    //todo!()
+    Ok(Json(mc.stock_sell(ctx, stock).await?))
+}
+
+async fn trade_get(
+    State(mc): State<ModelController>,
+    ctx: Ctx,
+    Path(_id): Path<u64>,
+    Json(stock): Json<Stock>,
+) -> Resultc<Json<Stock>> {
+    println!(">>> {:<12} - delete_ticket", "HANDLER");
+
+    let mut ticket = mc.stock_get(ctx, stock).await?;
+
+    Ok(Json(ticket.remove(0)))
 }
 
 async fn stock_list(
-    State(mc): State<ModelController>,
-    ctx: Ctx,
-    Json(stock): Json<Stock>,
+    State(_mc): State<ModelController>,
+    _ctx: Ctx,
+    Path(_id): Path<u64>,
+    Json(_stock): Json<Stock>,
 ) -> Resultc<Json<Vec<Stock>>> {
     /*  let id = surrealdb::sql::Id::String(String::from("ID"));
     let t = Thing {
@@ -75,23 +82,10 @@ async fn stock_list(
     todo!()
 }
 
-async fn stock_get(
-    State(mc): State<ModelController>,
-    ctx: Ctx,
-    Path(id): Path<u64>,
-) -> Resultc<Json<Ticket>> {
-    println!(">>> {:<12} - delete_ticket", "HANDLER");
-
-    //let ticket = mc.delete_ticket(ctx, id).await?;
-
-    //Ok(Json(ticket))
-    todo!()
-}
-
 async fn cash_add(
-    State(mc): State<ModelController>,
-    ctx: Ctx,
-    Json(cash): Json<TicketForCreate>,
+    State(_mc): State<ModelController>,
+    _ctx: Ctx,
+    Json(_cash): Json<TicketForCreate>,
 ) -> Resultc<Json<Ticket>> {
     println!("->> {:<12} - create_ticket", "HANDLER");
     //let c = mc.cash_add(ctx, stock).await?;
