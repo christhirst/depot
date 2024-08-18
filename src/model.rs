@@ -4,6 +4,9 @@ use crate::ctx::Ctx;
 use crate::error::Resultc;
 use db_service::model::Cash;
 use db_service::model::Stock;
+use db_service::model::StockEntry;
+use db_service::stock::PriceSum;
+use db_service::stock::Sum;
 use db_service::Record;
 use db_service::DB;
 use serde::{Deserialize, Serialize};
@@ -66,6 +69,27 @@ impl ModelController {
 
 // CRUD Implementation
 impl ModelController {
+    pub async fn stock_add(&self, ctx: Ctx, stockentry: StockEntry) -> Resultc<StockEntry> {
+        //let mut _store = self.tickets_store.lock().unwrap();
+        let stockentry = self.db.stock_add(&stockentry).await?;
+        Ok(stockentry)
+    }
+    pub async fn stock_list(&self, ctx: Ctx, stocks: String) -> Resultc<Vec<StockEntry>> {
+        //let mut _store = self.tickets_store.lock().unwrap();
+        let stockentry = self.db.stock_list(&stocks).await?;
+        Ok(stockentry)
+    }
+
+    pub async fn stock_del(&self, ctx: Ctx, stock: Stock) -> Resultc<Stock> {
+        //let mut _store = self.tickets_store.lock().unwrap();
+        let stock = Stock {
+            owner: Thing::from(("user", ctx.user_id().to_string().as_ref())),
+            ..stock
+        };
+        let _cash = self.db.share_sell(&stock).await.unwrap();
+        Ok(stock)
+    }
+
     pub async fn stock_buy(&self, ctx: Ctx, stock: Stock) -> Resultc<Stock> {
         //let mut store = self.tickets_store.lock().unwrap();
         let stock = Stock {
@@ -84,18 +108,24 @@ impl ModelController {
             owner: Thing::from(("user", ctx.user_id().to_string().as_ref())),
             ..stock
         };
-
         let _cash = self.db.share_sell(&stock).await.unwrap();
-        //store.push(Some(ticket.clone()));
-
-        //Ok(ticket)
-
         Ok(stock)
     }
+
     pub async fn stock_get(&self, ctx: Ctx, stock: Stock) -> Resultc<Vec<Stock>> {
         //let mut store = self.tickets_store.lock().unwrap();
-
         let cash = self.db.shares_select("share", &stock).await?;
+        Ok(cash)
+    }
+    pub async fn stock_amount_by_symbol(&self, ctx: Ctx, symbol: &str) -> Resultc<Sum> {
+        //let mut store = self.tickets_store.lock().unwrap();
+        let cash = self.db.share_sum(symbol).await?;
+        Ok(cash)
+    }
+
+    pub async fn stock_worth_by_symbol(&self, ctx: Ctx, symbol: &str) -> Resultc<PriceSum> {
+        //let mut store = self.tickets_store.lock().unwrap();
+        let cash = self.db.share_price_sum(symbol).await?;
         Ok(cash)
     }
 
@@ -110,14 +140,18 @@ impl ModelController {
         Ok(cash)
     }
 
-    pub async fn cash_pull(&self, _ctx: Ctx, _cash: db_service::model::Cash) -> Resultc<Ticket> {
-        //let mut _store = self.tickets_store.lock().unwrap();
-
-        /* let cash = self.db.cash_add(cash).await?;
-        store.push(Some(ticket.clone()));
-
-        Ok(ticket) */
-        todo!()
+    pub async fn cash_pull(&self, _ctx: Ctx, cash: Cash) -> Resultc<Record> {
+        if cash.amount < 0.0 {
+            let rec = self.db.cash_entry(&cash).await?;
+            Ok(rec)
+        } else {
+            let cash = Cash {
+                amount: -cash.amount,
+                ..cash
+            };
+            let rec = self.db.cash_entry(&cash).await?;
+            Ok(rec)
+        }
     }
 
     pub async fn get_cash_sum(

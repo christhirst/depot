@@ -2,9 +2,8 @@ use std::fmt;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use surrealdb::engine::any;
+//use strum_macros::Display;
 use surrealdb::sql::Thing;
-use surrealdb::Surreal;
 
 //use tonic_reflection::server::Error as Grpc_Error;
 
@@ -20,6 +19,8 @@ pub enum DBError {
     CashErr(),
     #[error("{0}")]
     SDA(String),
+    #[error("{0}")]
+    SerializeErr(String),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -29,6 +30,30 @@ pub struct Cash {
     pub amount: f64,
     pub owner: Thing,
     pub timestamp: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub enum Country {
+    US,
+    DE,
+}
+
+impl fmt::Display for Country {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+        // or, alternatively:
+        // fmt::Debug::fmt(self, f)
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct StockEntry {
+    pub id: Option<Thing>,
+    pub name: String,
+    pub wkn: Option<String>,
+    pub isin: String,
+    pub symbol: Option<String>,
+    pub country: Country,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

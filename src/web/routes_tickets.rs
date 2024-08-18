@@ -6,19 +6,27 @@ use crate::model::{ModelController, Ticket, TicketForCreate};
 use axum::extract::{Path, State};
 use axum::routing::{delete, get, post};
 use axum::{Json, Router};
-use db_service::model::Stock;
+use db_service::model::{Stock, StockEntry};
 //use db_service::model::Stock;
 use surrealdb::sql::Thing;
+use tracing::debug;
 
 pub fn routes(mc: ModelController) -> Router {
     Router::new()
         //.route_layer(middleware::from_fn(f))
-        .route("/stock_buy", post(stock_buy))
-        .route("/stock_sell/", delete(stock_sell))
-        .route("/stock_get/:id", get(trade_get))
+        .route("/stock_add", post(stock_add))
         .route("/stock_list/:id", get(stock_list))
+        .route("/stock_del", post(stock_buy))
+        .route("/shares_buy", post(stock_buy))
+        .route("/shares_sell/", delete(stock_sell))
+        .route("/shares_get/:id", get(trade_get))
+        .route("/shares_list/:id", get(stock_list))
+        .route("/shares_amount_by_symbol/:id", get(stock_list))
+        .route("/shares_stock_worth_by_symbol/:id", get(stock_list))
+        //cash
         .route("/cash_add/", post(stock_list))
         .route("/cash_withdraw/", post(stock_list))
+        .route("/cash_amount_by_currency/:id", post(stock_list))
         .route(
             "/cash_sum/",
             get(stock_list).post(stock_list).delete(stock_list),
@@ -27,6 +35,24 @@ pub fn routes(mc: ModelController) -> Router {
 }
 
 // region:    --- REST Handlers
+async fn stock_add(
+    State(mc): State<ModelController>,
+    ctx: Ctx,
+    Json(stock): Json<StockEntry>,
+) -> Resultc<Json<StockEntry>> {
+    debug!("->> {:?} - Stock add", stock);
+    Ok(Json(mc.stock_add(ctx, stock).await?))
+}
+
+async fn stock_list(
+    State(mc): State<ModelController>,
+    ctx: Ctx,
+    Path(id): Path<String>,
+) -> Resultc<Json<Vec<StockEntry>>> {
+    debug!("->> {:?} - Stock add", id);
+
+    Ok(Json(mc.stock_list(ctx, id).await?))
+}
 
 async fn stock_buy(
     State(mc): State<ModelController>,
@@ -54,14 +80,14 @@ async fn trade_get(
     Path(_id): Path<u64>,
     Json(stock): Json<Stock>,
 ) -> Resultc<Json<Stock>> {
-    println!(">>> {:<12} - delete_ticket", "HANDLER");
+    println!(">>> {:<12} - trade_get", "HANDLER");
 
     let mut ticket = mc.stock_get(ctx, stock).await?;
 
     Ok(Json(ticket.remove(0)))
 }
 
-async fn stock_list(
+async fn share_list(
     State(_mc): State<ModelController>,
     _ctx: Ctx,
     Path(_id): Path<u64>,

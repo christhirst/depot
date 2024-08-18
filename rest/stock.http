@@ -1,0 +1,18 @@
+POST http://localhost:8081/api/stock_add HTTP/1.1
+Content-Type: application/json
+
+{ 
+     "name": "British",
+     "wkn": "r32555",
+     "isin": "222222",
+     "symbol": "bat",
+     "country": "US"
+}
+
+####
+
+GET http://localhost:8081/api/stock_list/stock HTTP/1.1
+Content-Type: application/json
+
+  
+####

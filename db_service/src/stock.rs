@@ -2,15 +2,22 @@ use serde::{Deserialize, Serialize};
 use surrealdb::sql::{Id, Thing};
 
 use crate::{
-    model::{Cash, DBError, Stock},
+    model::{Cash, DBError, Stock, StockEntry},
     Record, User, DB,
 };
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-struct sum {
+pub struct Sum {
     #[allow(dead_code)]
-    sum: i64,
-    symbol: String,
+    pub sum: i64,
+    pub symbol: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PriceSum {
+    #[allow(dead_code)]
+    pub sum: f64,
+    pub symbol: String,
 }
 
 /* #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -37,7 +44,37 @@ impl DB {
     #[allow(unused)]
     pub async fn flushdb(&self, table: &str) -> Result<Vec<Stock>, DBError> {
         let rec: Vec<Stock> = self.db.delete(table).await?;
+
         Ok(rec)
+    }
+
+    #[allow(unused)]
+    pub async fn stock_add(&self, se: &StockEntry) -> Result<StockEntry, DBError> {
+        let query = format!(
+            "CREATE stock SET name = '{}', wkn = '{}', isin = '{}', symbol  = '{}', country = '{}';",
+            se.name,
+            se.wkn.clone().unwrap_or_default(),
+            se.isin,
+            se.symbol.clone().unwrap_or_default(),
+            se.country
+        );
+        let mut resp = self.db.query(query).await?;
+        let created: Option<StockEntry> = resp.take(0)?;
+        created.ok_or(DBError::SerializeErr("Error parsing response".to_string()))
+    }
+
+    #[allow(unused)]
+    pub async fn stock_list(&self, stock: &str) -> Result<Vec<StockEntry>, DBError> {
+        let rec: Vec<StockEntry> = self.db.select(stock).await?;
+
+        Ok(rec)
+    }
+
+    #[allow(unused)]
+    pub async fn entry_del(&self, table: &Thing) -> Result<StockEntry, DBError> {
+        let rec: Option<StockEntry> = self.db.delete(table).await?;
+
+        rec.ok_or(DBError::Sdb)
     }
 
     #[allow(unused)]
@@ -62,7 +99,7 @@ impl DB {
             Err(DBError::CashErr())
         }
     }
-    pub async fn share_sum(&self, stock: &str) -> Result<i64, DBError> {
+    pub async fn share_sum(&self, stock: &str) -> Result<Sum, DBError> {
         //SELECT math::sum(amount) AS sum,symbol FROM share WHERE symbol = 'bat' GROUP BY symbol;
         let query = format!(
             "SELECT math::sum(amount) AS sum, symbol FROM share WHERE symbol = '{}' GROUP BY symbol;",
@@ -71,15 +108,27 @@ impl DB {
 
         let mut result = self.db.query(query).await?;
 
-        let shares: Option<sum> = result.take(0)?;
-        let w = shares.ok_or(DBError::Sdb)?;
-        Ok(w.sum)
+        let shares: Option<Sum> = result.take(0)?;
+        shares.ok_or(DBError::Sdb)
+    }
+
+    pub async fn share_price_sum(&self, stock: &str) -> Result<PriceSum, DBError> {
+        //SELECT math::sum(amount) AS sum,symbol FROM share WHERE symbol = 'bat' GROUP BY symbol;
+        let query = format!(
+            "SELECT math::sum(amount * price) AS sum, symbol FROM share WHERE symbol = '{}' GROUP BY symbol;",
+            stock,
+        );
+
+        let mut result = self.db.query(query).await?;
+
+        let shares: Option<PriceSum> = result.take(0)?;
+        shares.ok_or(DBError::Sdb)
     }
 
     #[allow(unused)]
     pub async fn share_sell(&self, stock: &Stock) -> Result<Record, DBError> {
         let amount = self.share_sum(&stock.symbol).await?;
-        if (amount + stock.amount > 0) && stock.amount < 0 {
+        if (amount.sum + stock.amount > 0) && stock.amount < 0 {
             Err(DBError::OO())
         } else if stock.amount < 0 {
             //add cash amount
