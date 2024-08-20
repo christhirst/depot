@@ -176,7 +176,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let db = db_service::DB { db };
 
     //init tables
-    let table = vec!["user", "cash", "share", "cashsum"];
+    let table = vec!["user", "cash", "share", "cashsum", "stock"];
 
     //init fields
     let set: Vec<(&str, &str, &str)> = vec![
@@ -193,12 +193,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ("currency", "cashsum", "string"),
         ("sum", "cashsum", "number"),
         //share
+        ("stock", "share", "record(stock)"),
         ("name", "share", "string"),
         ("owner", "share", "record(user)"),
         ("symbol", "share", "string"),
         ("amount", "share", "number"),
+        ("price", "share", "number"),
+        ("datebuy", "share", "datetime"),
+        //stock
+        ("name", "stock", "string"),
+        ("wkn", "stock", "string"),
+        ("isin", "stock", "string"),
+        ("symbol", "stock", "string"),
+        ("country", "stock", "string"),
     ];
-    let _u = db.db_init(&table, &set).await?;
+
+    let idx = vec![("symbolIndex", "stock", "symbol")];
+
+    let _u = db.db_init(&table, &set, &idx).await?;
 
     //server start
     // Initialize ModelController.

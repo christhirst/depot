@@ -36,6 +36,18 @@ pub fn define_field(table: &[(&str, &str, &str)]) -> String {
     q
 }
 
+pub fn define_index(table: &[(&str, &str, &str)]) -> String {
+    let mut q = String::from("");
+    for s in table {
+        let qs = format!(
+            "DEFINE INDEX {} ON TABLE {} COLUMNS {} UNIQUE;",
+            s.0, s.1, s.2
+        );
+        q.push_str(&qs)
+    }
+    q
+}
+
 pub async fn initdb(s: &str) -> Result<Surreal<Any>, DBError> {
     let _ = s;
     let db: Surreal<Client>;
@@ -64,11 +76,15 @@ impl DB {
         //&[(&str, &str, &str)]
         //&Vec<(&str, &str, &str)>
         fields: &[(&str, &str, &str)],
+        index: &[(&str, &str, &str)],
     ) -> surrealdb::Result<surrealdb::Response> {
         let q = define_table(table);
         let _result = self.db.query(q).await?;
         let q = define_field(fields);
         let result = self.db.query(q).await?;
+        let q = define_index(index);
+        let result = self.db.query(q).await?;
+
         Ok(result)
     }
 }

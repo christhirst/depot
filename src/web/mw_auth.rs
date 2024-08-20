@@ -64,14 +64,14 @@ impl<S: Send + Sync> FromRequestParts<S> for Ctx {
     type Rejection = Error;
 
     async fn from_request_parts(_parts: &mut Parts, _state: &S) -> Resultc<Self> {
-        println!("->> {:<12} - Ctx", "EXTRACTOR");
+        //println!("->> {:<12} - Ctx", "EXTRACTOR");
 
         /* parts
         .extensions
         .get::<Resultc<Ctx>>()
         .ok_or(Error::AuthFailCtxNotInRequestExt)?
         .clone() */
-        let c = Ctx::new(1);
+        let c = Ctx::new("1".to_string());
         Ok(c)
     }
 }
@@ -80,7 +80,7 @@ impl<S: Send + Sync> FromRequestParts<S> for Ctx {
 
 /// Parse a token of format `user-[user-id].[expiration].[signature]`
 /// Returns (user_id, expiration, signature)
-fn parse_token(token: String) -> Resultc<(u64, String, String)> {
+fn parse_token(token: String) -> Resultc<(String, String, String)> {
     let (_whole, user_id, exp, sign) = regex_captures!(
         r#"^user-(\d+)\.(.+)\.(.+)"#, // a literal regex
         &token
@@ -91,5 +91,5 @@ fn parse_token(token: String) -> Resultc<(u64, String, String)> {
         .parse()
         .map_err(|_| Error::AuthFailTokenWrongFormat)?;
 
-    Ok((user_id, exp.to_string(), sign.to_string()))
+    Ok((user_id.to_string(), exp.to_string(), sign.to_string()))
 }

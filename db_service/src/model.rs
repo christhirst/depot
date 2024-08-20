@@ -59,6 +59,7 @@ pub struct StockEntry {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Stock {
     pub id: Option<Thing>,
+    pub stock: Thing,
     pub name: String,
     pub symbol: String,
     pub amount: i64,
@@ -67,6 +68,7 @@ pub struct Stock {
     pub datebuy: DateTime<Utc>,
 }
 
+#[allow(dead_code)]
 impl Default for Stock {
     fn default() -> Stock {
         Stock {

@@ -8,16 +8,16 @@ use axum::routing::{delete, get, post};
 use axum::{Json, Router};
 use db_service::model::{Stock, StockEntry};
 //use db_service::model::Stock;
-use surrealdb::sql::Thing;
+use surrealdb::sql::{Id, Thing};
 use tracing::debug;
 
 pub fn routes(mc: ModelController) -> Router {
     Router::new()
         //.route_layer(middleware::from_fn(f))
-        .route("/stock_add", post(stock_add))
-        .route("/stock_list/:id", get(stock_list))
-        .route("/stock_del", post(stock_buy))
-        .route("/shares_buy", post(stock_buy))
+        .route("/stock", post(stock_add))
+        .route("/stock/:id", get(stock_list))
+        .route("/stock/:id", delete(entry_del))
+        .route("/shares", post(stock_buy))
         .route("/shares_sell/", delete(stock_sell))
         .route("/shares_get/:id", get(trade_get))
         .route("/shares_list/:id", get(stock_list))
@@ -120,6 +120,39 @@ async fn cash_add(
 
     //Ok(Json(ticket))
     todo!()
+}
+
+async fn cash_sum_by_currency(
+    State(mc): State<ModelController>,
+    ctx: Ctx,
+    Json(currency): Json<String>,
+) -> Resultc<Json<Ticket>> {
+    println!("->> {:<12} - create_ticket", "HANDLER");
+    //let c = mc.cash_add(ctx, stock).await?;
+
+    let ticket = mc.cash_sum_by_currency(ctx, &currency).await?;
+
+    //Ok(Json(ticket))
+    todo!()
+}
+
+async fn entry_del(
+    State(mc): State<ModelController>,
+    ctx: Ctx,
+    Path(id): Path<String>,
+) -> Resultc<Json<StockEntry>> {
+    debug!("->> {:?} - Stock deleted", id);
+    let mut ticket = mc
+        .entry_del(
+            ctx,
+            Thing {
+                tb: "stock".to_string(),
+                id: Id::from(id),
+            },
+        )
+        .await?;
+
+    Ok(Json(ticket))
 }
 // endregion: --- REST Handlers
 

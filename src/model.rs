@@ -154,18 +154,21 @@ impl ModelController {
         }
     }
 
-    pub async fn get_cash_sum(
-        &self,
-        // _ctx: Ctx,
-        owner: &Thing,
-        currency: &str,
-    ) -> Resultc<Vec<Ticket>> {
-        self.db.cash_sum(owner, currency);
+    pub async fn cash_sum_by_currency(&self, ctx: Ctx, currency: &str) -> Resultc<Vec<Ticket>> {
+        self.db.cash_sum(
+            &Thing::from(("user", ctx.user_id().to_string().as_ref())),
+            currency,
+        );
         let store = self.tickets_store.lock().unwrap();
 
         let tickets = store.iter().filter_map(|t| t.clone()).collect();
 
         Ok(tickets)
+    }
+
+    pub async fn entry_del(&self, _ctx: Ctx, cash: Thing) -> Resultc<StockEntry> {
+        let stockentry = self.db.entry_del(&cash).await?;
+        Ok(stockentry)
     }
 }
 

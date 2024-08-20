@@ -84,7 +84,8 @@ impl DB {
         //check if cash is enough with 5% margin
         if cash.sum > (stock.amount as f64 * stock.price) * 1.05 {
             //CREATE share:2 SET sym = 'aurub', amount = 10000, owner = users:test1;
-            let query = format!("CREATE share SET name = '{}', symbol = '{}', amount = {},price = {}, owner = {}, datebuy = <datetime>'{}';",     
+            let query = format!("CREATE share SET stock = {}, name = '{}', symbol = '{}', amount = {},price = {}, owner = {}, datebuy = <datetime>'{}';",     
+                    stock.stock,
                     stock.name,
                     stock.symbol,
                     stock.amount,
@@ -286,6 +287,10 @@ mod tests {
 
         let share = Stock {
             id: None,
+            stock: Thing {
+                tb: String::from("stock"),
+                id: Id::from("bat"),
+            },
             name: String::from("British American Tobacco"),
             symbol: String::from("bat"),
             amount: 5,
@@ -330,6 +335,10 @@ mod tests {
 
         let share = Stock {
             id: id,
+            stock: Thing {
+                tb: String::from("stock"),
+                id: Id::from("bat"),
+            },
             name: String::from("British American Tobacco"),
             symbol: String::from("bat"),
             amount: 110000,
@@ -361,6 +370,10 @@ mod tests {
         let ii = DB { db: &db };
         let share = Stock {
             id: None,
+            stock: Thing {
+                tb: String::from("stock"),
+                id: Id::from("bat"),
+            },
             name: String::from("British American Tobacco"),
             symbol: String::from("bat"),
             amount: -110000,
@@ -394,6 +407,10 @@ mod tests {
         let ii = DB { db: &db };
         let share = Stock {
             id: None,
+            stock: Thing {
+                tb: String::from("stock"),
+                id: Id::from("bat"),
+            },
             name: String::from("British American Tobacco"),
             symbol: String::from("bat"),
             amount: 110000,

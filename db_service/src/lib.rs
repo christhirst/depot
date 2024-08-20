@@ -89,7 +89,11 @@ mod tests {
             ("mail", "user", "string"),
         ];
 
-        let resp = ii.db_init(&table, &set).await?;
+        let idx = vec![          
+            ("symbolIndex", "stock", "symbol"),
+        ];
+
+        let resp = ii.db_init(&table, &set, &idx).await?;
 
         let err = resp.check();
         println!("{:?}", err);
