@@ -1,5 +1,4 @@
 use crate::ctx::Ctx;
-use crate::error;
 use crate::error::Resultc;
 //use crate::middleware::middleware_header;
 use crate::model::{ModelController, Ticket, TicketForCreate};
@@ -7,6 +6,8 @@ use axum::extract::{Path, State};
 use axum::routing::{delete, get, post};
 use axum::{Json, Router};
 use db_service::model::{Stock, StockEntry};
+
+use db_service::User;
 //use db_service::model::Stock;
 use surrealdb::sql::{Id, Thing};
 use tracing::debug;
@@ -14,6 +15,7 @@ use tracing::debug;
 pub fn routes(mc: ModelController) -> Router {
     Router::new()
         //.route_layer(middleware::from_fn(f))
+        .route("/user", post(stock_add))
         .route("/stock", post(stock_add))
         .route("/stock/:id", get(stock_list))
         .route("/stock/:id", delete(entry_del))

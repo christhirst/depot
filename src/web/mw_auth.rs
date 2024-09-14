@@ -45,7 +45,7 @@ pub async fn mw_ctx_resolver(
             Ok(Ctx::new(user_id))
         }
         Err(e) => Err(e),
-    };
+    }; 
 
     // Remove the cookie if something went wrong other than NoAuthTokenCookie.
     if result_ctx.is_err() && !matches!(result_ctx, Err(Error::AuthFailNoAuthTokenCookie)) {

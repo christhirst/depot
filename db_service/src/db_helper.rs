@@ -57,7 +57,7 @@ pub async fn initdb(s: &str) -> Result<Surreal<Any>, DBError> {
     } else {
         db = Surreal::new::<Ws>("0.0.0.0:8080").await?;
     } */
-    let db = surrealdb::engine::any::connect("ws://0.0.0.0:8080").await?;
+    let db = surrealdb::engine::any::connect("ws://172.23.187.43:8080").await?;
     db.signin(Root {
         username: "root",
         password: "root",

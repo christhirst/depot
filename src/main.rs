@@ -2,7 +2,11 @@ use error::Error;
 /* use db_helper::initdb;
 use model::DBError; */
 use serde::{Deserialize, Serialize};
+use surrealdb::opt::auth::Scope;
 use tokio::net::TcpListener;
+use tower_cookies::CookieManagerLayer;
+use tracing::info;
+use tracing_subscriber::FmtSubscriber;
 /* mod cash;
 mod db_helper;
 mod stock;
@@ -20,158 +24,17 @@ use axum::{
     routing::get,
     Extension, Router,
 };
-/* #[derive(Debug)]
-pub enum Errorc {
-    LoginFail,
-} */
-
-/* #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub struct User {
-    pub id: Thing,
-    pub name: String,
-    pub mail: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Cash {
-    pub timestamp: String,
-    pub currency: String,
-    pub amount: String,
-    pub owner: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Cashsum {
-    pub currency: String,
-    pub sum: u64,
-    pub owner: Thing,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct Record {
-    #[allow(dead_code)]
-    id: Thing,
-} */
-
-/* fn create_entries(table: &HashMap<&str, Vec<(&str, &str)>>) -> String {
-    let mut q = String::from("");
-    for s in table {
-        let qs = format!("CREATE {}", s.0);
-        q.push_str(&qs);
-
-        let mut i = 0;
-        for ss in s.1 {
-            i += 1;
-            if i == 1 {
-                q.push_str(" SET");
-            }
-            let qs = format!(" {} = {}", ss.0, ss.1);
-            q.push_str(&qs);
-            if s.1.len() != i {
-                q.push(',')
-            }
-        }
-        q.push_str("; ");
-    }
-    //println!("{}", q);
-    q
-} */
-
-/* fn create_select(table: &Vec<(&str, Vec<&str>)>) -> String {
-    let mut q = String::from("");
-    for s in table {
-        let qs = format!("{} ", s.0);
-        q.push_str(&qs);
-        for ss in &s.1 {
-            let qq = format!("{} ", ss);
-            q.push_str(&qq);
-        }
-    }
-    q.push_str("; ");
-    q
-} */
-
-/* fn create_update(table: &HashMap<&str, Vec<(&str, &str)>>) -> String {
-    //UPDATE ONLY person:tobie SET name = 'Tobie', company = 'SurrealDB', skills = ['Rust', 'Go', 'JavaScript'];
-    let mut q = String::from("");
-    for s in table {
-        let qs = format!("UPDATE ONLY {}", s.0);
-        q.push_str(&qs);
-
-        let mut i = 0;
-        for ss in s.1 {
-            i += 1;
-            if i == 1 {
-                q.push_str(" SET");
-            }
-            let qs = format!(" {} = {}", ss.0, ss.1);
-            q.push_str(&qs);
-            if s.1.len() != i {
-                q.push(',')
-            }
-        }
-        q.push_str("; ");
-    }
-    println!("{}", q);
-    q
-} */
-/*
-struct Relate<'a> {
-    source: (&'a str, &'a str),
-    target: (&'a str, &'a str),
-} */
-//&[((&str, &str), (&str, &str))]
-/* #[allow(unused)]
-fn relate_wrote(table: &[Relate]) -> String {
-    let mut q = String::from("");
-    for s in table {
-        let qs = format!(
-            "RELATE {}:{}->wrote->{}:{} SET time.written = time::now();",
-            s.source.0, s.source.1, s.target.0, s.target.1
-        );
-        q.push_str(&qs)
-    }
-    q
-} */
-
-/* impl From<surrealdb::error::Db> for DBError {
-    fn from(_value: surrealdb::error::Db) -> Self {
-        Self::Sdb
-    }
-}
-
-impl From<surrealdb::Error> for DBError {
-    fn from(_value: surrealdb::Error) -> Self {
-        Self::Db(_value)
-    }
-}
- */
-//Result<impl Iterator<Item = Result<Object>>, DBError>
-/* #[allow(unused)]
-fn into_iter_objects(
-    ress: Vec<Response>,
-) -> Result<impl Iterator<Item = Result<Object, DBError>>, DBError> {
-    let res = ress.into_iter().next().map(|rp| rp.result).transpose()?;
-    match res {
-        Some(Value::Array(arr)) => {
-            let it = arr.into_iter().map(|v| match v {
-                Value::Object(object) => Ok(object),
-                _ => Err(DBError::Sdb),
-            });
-            Ok(it)
-        }
-        _ => Err(DBError::Sdb),
-    }
-}
-
-struct DB<'a> {
-    db: &'a Surreal<Client>,
-} */
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(tracing::Level::INFO)
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
+
     let db = db_service::db_helper::initdb("e").await?;
-    let db = surrealdb::engine::any::connect("mem://").await.unwrap();
+    //let db = surrealdb::engine::any::connect("mem://").await.unwrap();
     db.use_ns("test").use_db("test").await?;
     let db = db_service::DB { db };
 
@@ -181,8 +44,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //init fields
     let set: Vec<(&str, &str, &str)> = vec![
         //user
-        ("name", "user", "string"),
-        ("mail", "user", "string"),
+        /* ("password", "user", "string"),
+        ("mail", "user", "string"), */
         //currency
         ("timestamp", "cash", "datetime"),
         ("currency", "cash", "string"),
@@ -212,6 +75,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let _u = db.db_init(&table, &set, &idx).await?;
 
+    /* let jwt = db
+        .db
+        .signup(Scope {
+            namespace: "test",
+            database: "test",
+            scope: "access",
+            params: Credentials {
+                email: "admin2 @test.de",
+                password: "test",
+            },
+        })
+        .await?;
+    println!("jwt: {:?}", jwt); */
     //server start
     // Initialize ModelController.
     let mc = ModelController::new().await?;
@@ -221,11 +97,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let routes_all = Router::new()
         .merge(routes())
-        .merge(web::routes_login::routes())
+        .merge(web::routes_login::routes(mc.clone()))
         .nest("/api", routes_apis)
-        .layer(Extension(mc));
-    //.layer(middleware::map_response(main_response_mapper))
-    //.layer(CookieManagerLayer::new());
+        .layer(Extension(mc))
+        //.layer(middleware::map_response(main_response_mapper))
+        .layer(CookieManagerLayer::new());
+    //TODO fallback static
+
+    info!("Starting Server");
 
     // region:    --- Start Server
     let listener = TcpListener::bind("127.0.0.1:8081").await.unwrap();

@@ -11,13 +11,14 @@ pub mod cash;
 pub mod db_helper;
 pub mod model;
 pub mod stock;
-mod user;
+pub mod user;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct User {
-    pub id: Thing,
-    pub name: String,
+    pub id: Option<Thing>,
+    pub name: Option<String>,
     pub mail: String,
+    pub pw: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -89,9 +90,7 @@ mod tests {
             ("mail", "user", "string"),
         ];
 
-        let idx = vec![          
-            ("symbolIndex", "stock", "symbol"),
-        ];
+        let idx = vec![("symbolIndex", "stock", "symbol")];
 
         let resp = ii.db_init(&table, &set, &idx).await?;
 

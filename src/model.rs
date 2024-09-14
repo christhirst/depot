@@ -2,14 +2,19 @@ use std::sync::{Arc, Mutex};
 
 use crate::ctx::Ctx;
 use crate::error::Resultc;
+use axum::routing::trace;
+use db_service::cash::Cashsum;
 use db_service::model::Cash;
 use db_service::model::Stock;
 use db_service::model::StockEntry;
 use db_service::stock::PriceSum;
 use db_service::stock::Sum;
+use db_service::user::DbConf;
 use db_service::Record;
+use db_service::User;
 use db_service::DB;
 use serde::{Deserialize, Serialize};
+use surrealdb::opt::auth::Scope;
 use surrealdb::sql::Thing;
 use thiserror::Error;
 //use tonic_reflection::server::Error as Grpc_Error;
@@ -66,7 +71,7 @@ impl ModelController {
         })
     }
 }
-
+//TODO IMPL USER MODEL
 // CRUD Implementation
 impl ModelController {
     pub async fn stock_add(&self, ctx: Ctx, stockentry: StockEntry) -> Resultc<StockEntry> {
@@ -154,16 +159,39 @@ impl ModelController {
         }
     }
 
-    pub async fn cash_sum_by_currency(&self, ctx: Ctx, currency: &str) -> Resultc<Vec<Ticket>> {
-        self.db.cash_sum(
-            &Thing::from(("user", ctx.user_id().to_string().as_ref())),
-            currency,
-        );
-        let store = self.tickets_store.lock().unwrap();
+    pub async fn cash_sum_by_currency(&self, ctx: Ctx, currency: &str) -> Resultc<Cashsum> {
+        let cashsum = self
+            .db
+            .cash_sum(
+                &Thing::from(("user", ctx.user_id().to_string().as_ref())),
+                currency,
+            )
+            .await?;
 
-        let tickets = store.iter().filter_map(|t| t.clone()).collect();
+        Ok(cashsum)
+    }
 
-        Ok(tickets)
+    pub async fn user_signup(&self, _ctx: Ctx, user: User) -> Resultc<String> {
+        let db_conf = DbConf {
+            namespace: String::from("test"),
+            database: String::from("test"),
+            scope: String::from("access"),
+        };
+        let jwt = self.db.user_signup(db_conf, &user).await?;
+        Ok(jwt)
+    }
+
+    pub async fn user_signin(&self, _ctx: Ctx, user: User) -> Resultc<String> {
+        let db_conf = DbConf {
+            namespace: String::from("test"),
+            database: String::from("test"),
+            scope: String::from("access"),
+        };
+        let jwt = self.db.user_signin(db_conf, &user).await.map_err(|e| {
+            tracing::error!("Login failed: {:?}", e);
+            e
+        })?;
+        Ok(jwt)
     }
 
     pub async fn entry_del(&self, _ctx: Ctx, cash: Thing) -> Resultc<StockEntry> {

@@ -1,14 +1,70 @@
+use serde::Serialize;
+use surrealdb::opt::auth::Scope;
+
 use crate::model::DBError;
 use crate::DB;
 use crate::{create_entries, db_helper::thing_to_string, User};
 use std::collections::HashMap;
 
+#[derive(Serialize)]
+struct Credentials<'a> {
+    email: &'a str,
+    password: &'a str,
+}
+
+#[derive(Serialize)]
+pub struct DbConf {
+    pub namespace: String,
+    pub database: String,
+    pub scope: String,
+}
+
+
+
+
+
 impl DB {
     #[allow(unused)]
+    pub async fn user_signup(&self, db_conf: DbConf, user: &User) -> Result<String, DBError> {
+        let jwt = self
+            .db
+            .signup(Scope {
+                namespace: &db_conf.namespace,
+                database: &db_conf.database,
+                scope: &db_conf.scope,
+                params: Credentials {
+                    email: &user.mail,
+                    password: &user.pw,
+                },
+            })
+            .await?;
+
+        Ok(jwt.as_insecure_token().to_string())
+    }
+
+    #[allow(unused)]
+    pub async fn user_signin(&self, db_conf: DbConf, user: &User) -> Result<String, DBError> {
+        let jwt = self
+            .db
+            .signin(Scope {
+                namespace: &db_conf.namespace,
+                database: &db_conf.database,
+                scope: &db_conf.scope,
+                params: Credentials {
+                    email: &user.mail,
+                    password: &user.pw,
+                },
+            })
+            .await?;
+        Ok(jwt.as_insecure_token().to_string())
+    }
+
+    /* #[allow(unused)]
     pub async fn user_add(&self, user: &User) -> Result<User, DBError> {
-        let set1: Vec<(&str, &str)> = vec![("name", &user.name), ("mail", &user.mail)];
+        let set1: Vec<(&str, &str)> =
+            vec![("name", &user.name.clone().unwrap()), ("mail", &user.mail)];
         let mut rpg_party = HashMap::new();
-        let id: &str = &thing_to_string(user.id.clone());
+        let id: &str = &thing_to_string(user.clone().id.unwrap());
         rpg_party.insert(id, set1);
 
         let query = create_entries(&rpg_party);
@@ -16,7 +72,7 @@ impl DB {
         let mut result = self.db.query(query).await?;
         let pp: Option<User> = result.take(0)?;
         pp.ok_or(DBError::Sdb)
-    }
+    } */
 
     pub async fn user_del_by_id(&self, name: &str) -> surrealdb::Result<()> {
         let query = format!("{} {};", "DELETE", name);
@@ -39,8 +95,8 @@ impl DB {
         //UPDATE user:testuser1 SET name = 'Tobie', mail = 'SurrealDB@mail';
         let query = format!(
             "UPDATE {} SET name = '{}', mail = '{}';",
-            thing_to_string(u.id.clone()),
-            u.name,
+            thing_to_string(u.id.clone().unwrap()),
+            u.clone().name.unwrap(),
             u.mail
         );
         println!("{query}");
@@ -59,7 +115,7 @@ mod tests {
 
     use super::*;
 
-    #[tokio::test]
+    /*  #[tokio::test]
     async fn create_entry() -> Result<(), DBError> {
         //init db
         let db = initdb("mem").await?;
@@ -74,6 +130,7 @@ mod tests {
             id: t.clone(),
             name: String::from("'testuser2'"),
             mail: String::from("'testuser2@mail'"),
+            pw: String::from("'testuser2'"),
         };
         let uu = ii.user_add(&user).await?;
 
@@ -89,15 +146,16 @@ mod tests {
             id: t.clone(),
             name: String::from("testuser2"),
             mail: String::from("testuser1@mail"),
+            pw: String::from("'testuser2'"),
         };
         //update user
         ii.user_update_by_id(&user).await?;
         ii.user_del_by_id(&id).await?;
 
         Ok(())
-    }
+    } */
 
-    #[ignore]
+    /* #[ignore]
     #[tokio::test]
     async fn user_select() -> Result<(), DBError> {
         let db = initdb("e").await?;
@@ -113,14 +171,15 @@ mod tests {
             id: t,
             name: String::from("testuser1"),
             mail: String::from("testuser1@mail"),
+            pw: String::from("'testuser2'"),
         };
         println!("{user_got:?}");
         println!("{user:?}");
         assert!(user == user_got);
         Ok(())
-    }
+    } */
 
-    #[ignore]
+    /* #[ignore]
     #[tokio::test]
     async fn user_update() -> Result<(), DBError> {
         let db = initdb("e").await?;
@@ -135,12 +194,13 @@ mod tests {
             id: t,
             name: String::from("testuser2"),
             mail: String::from("testuser1@mail"),
+            pw: String::from("'testuser2'"),
         };
 
         ii.user_update_by_id(&user).await?;
         assert!(user == user_got);
         Ok(())
-    }
+    } */
 
     #[ignore]
     #[tokio::test]

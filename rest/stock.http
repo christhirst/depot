@@ -22,3 +22,28 @@ Content-Type: application/json
 
   
 ####
+
+
+POST  http://localhost:8081/api/login HTTP/1.1
+Content-Type: application/json
+#Set-Cookie: test
+
+{
+     "username": "admin3@test.de",
+    "mail": "admin3@test.de",
+    "pw": "welcome"
+}
+  
+####
+
+POST  http://localhost:8081/api/signup HTTP/1.1
+Content-Type: application/json
+#Set-Cookie: test
+
+{
+     "username": "admin@test.de",
+    "mail": "admin3@test.de",
+    "pw": "welcome"
+}
+  
+####
