@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::{Id, Thing};
 
@@ -71,8 +73,9 @@ impl DB {
     }
 
     #[allow(unused)]
-    pub async fn entry_del(&self, table: &Thing) -> Result<StockEntry, DBError> {
-        let rec: Option<StockEntry> = self.db.delete(table).await?;
+    pub async fn entry_del(&self, table: (String, String)) -> Result<StockEntry, DBError> {
+        //TODO
+        let rec: Option<StockEntry> = self.db.delete(table).await.unwrap();
 
         rec.ok_or(DBError::Sdb)
     }
@@ -140,10 +143,8 @@ impl DB {
                 id: None,
                 currency: String::from("eur"),
                 amount,
-                owner: Thing {
-                    tb: String::from("user"),
-                    id: Id::from("testuser1"),
-                },
+                //TODO no unwrap
+                owner: Thing::from_str("user:testuser1").unwrap(),
                 timestamp: stock.datebuy.to_string(),
             };
 

@@ -1,0 +1,56 @@
+
+####
+
+#Create JWT
+POST http://localhost:8081/api/logsin HTTP/1.1
+Content-Type: application/json
+
+{
+"username": "Jack",
+"password":"test"
+}
+
+
+####
+#UserInfo by ID
+GET  http://localhost:8081/api/info HTTP/1.1
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJKYWNrIiwiZXhwIjoxNzI2NzY3Nzc0fQ.46AmD7EbFebVhHTR5kCgPNOQJJJNxNC3lB_vKtrp-K8
+
+
+####
+#Delete by ID
+DELETE  http://localhost:8081/api/entry HTTP/1.1
+Content-Type: application/json
+
+{ 
+     "tb": "user",
+     "id": "0m8f8rz6aythakq3x6m4"
+} 
+
+
+
+
+###Login in DB
+POST  http://localhost:8081/api/login HTTP/1.1
+Content-Type: application/json
+#Set-Cookie: test
+
+{
+     "username": "admin3@test.de",
+    "mail": "admin3@test.de",
+    "pw": "welcome"
+}
+  
+####
+#User create
+POST  http://localhost:8081/api/signup HTTP/1.1
+Content-Type: application/json
+#Set-Cookie: test
+
+{
+    "username": "aadmins@test.de",
+    "mail": "aadmins@test.de",
+    "pw": "welcome"
+}
+  
+####

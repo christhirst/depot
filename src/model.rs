@@ -14,7 +14,7 @@ use db_service::Record;
 use db_service::User;
 use db_service::DB;
 use serde::{Deserialize, Serialize};
-use surrealdb::opt::auth::Scope;
+
 use surrealdb::sql::Thing;
 use thiserror::Error;
 //use tonic_reflection::server::Error as Grpc_Error;
@@ -194,8 +194,8 @@ impl ModelController {
         Ok(jwt)
     }
 
-    pub async fn entry_del(&self, _ctx: Ctx, cash: Thing) -> Resultc<StockEntry> {
-        let stockentry = self.db.entry_del(&cash).await?;
+    pub async fn entry_del(&self, _ctx: Ctx, cash: (String, String)) -> Resultc<StockEntry> {
+        let stockentry = self.db.entry_del(cash).await?;
         Ok(stockentry)
     }
 }

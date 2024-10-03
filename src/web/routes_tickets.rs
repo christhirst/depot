@@ -8,9 +8,16 @@ use axum::{Json, Router};
 use db_service::model::{Stock, StockEntry};
 
 use db_service::User;
+use serde::{Deserialize, Serialize};
 //use db_service::model::Stock;
 use surrealdb::sql::{Id, Thing};
 use tracing::debug;
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct TbId {
+    tb: String,
+    id: String,
+}
 
 pub fn routes(mc: ModelController) -> Router {
     Router::new()
@@ -19,12 +26,14 @@ pub fn routes(mc: ModelController) -> Router {
         .route("/stock", post(stock_add))
         .route("/stock/:id", get(stock_list))
         .route("/stock/:id", delete(entry_del))
-        .route("/shares", post(stock_buy))
-        .route("/shares_sell/", delete(stock_sell))
+        .route("/shares_buy", post(stock_buy))
+        .route("/shares_sell/", post(stock_sell))
         .route("/shares_get/:id", get(trade_get))
-        .route("/shares_list/:id", get(stock_list))
+        .route("/shares_list", get(stock_list))
         .route("/shares_amount_by_symbol/:id", get(stock_list))
         .route("/shares_stock_worth_by_symbol/:id", get(stock_list))
+        //entry
+        .route("/entry", delete(entry_del))
         //cash
         .route("/cash_add/", post(stock_list))
         .route("/cash_withdraw/", post(stock_list))
@@ -36,7 +45,7 @@ pub fn routes(mc: ModelController) -> Router {
         .with_state(mc)
 }
 
-// region:    --- REST Handlers
+// region:    --- STOCK REST Handlers
 async fn stock_add(
     State(mc): State<ModelController>,
     ctx: Ctx,
@@ -75,7 +84,9 @@ async fn stock_sell(
 
     Ok(Json(mc.stock_sell(ctx, stock).await?))
 }
+// endregion: --- STOCK REST Handlers
 
+// region:    --- SHARES REST Handlers
 async fn trade_get(
     State(mc): State<ModelController>,
     ctx: Ctx,
@@ -109,7 +120,9 @@ async fn share_list(
     //Ok(Json(tickets))
     todo!()
 }
+// endregion: --- SHARES REST Handlers
 
+// region:    --- CASH REST Handlers
 async fn cash_add(
     State(_mc): State<ModelController>,
     _ctx: Ctx,
@@ -137,26 +150,21 @@ async fn cash_sum_by_currency(
     //Ok(Json(ticket))
     todo!()
 }
+// endregion:    --- CASH REST Handlers
 
+// region:    --- ENTRY REST Handlers
 async fn entry_del(
     State(mc): State<ModelController>,
     ctx: Ctx,
-    Path(id): Path<String>,
+    Json(tbid): Json<TbId>,
 ) -> Resultc<Json<StockEntry>> {
-    debug!("->> {:?} - Stock deleted", id);
-    let mut ticket = mc
-        .entry_del(
-            ctx,
-            Thing {
-                tb: "stock".to_string(),
-                id: Id::from(id),
-            },
-        )
-        .await?;
+    let _ = tbid;
+    debug!("->> {:?} - Stock deleted", tbid);
+    let mut ticket = mc.entry_del(ctx, (tbid.tb, tbid.id)).await?;
 
     Ok(Json(ticket))
 }
-// endregion: --- REST Handlers
+// endregion: --- ENTRY REST Handlers
 
 #[cfg(test)]
 mod tests {

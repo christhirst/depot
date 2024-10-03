@@ -1,11 +1,10 @@
-use serde::Serialize;
-use surrealdb::opt::auth::Scope;
-
 use crate::model::DBError;
 use crate::DB;
 use crate::{create_entries, db_helper::thing_to_string, User};
+use serde::Serialize;
 use std::collections::HashMap;
-
+use surrealdb::opt::auth::Database;
+use surrealdb::opt::auth::Record;
 #[derive(Serialize)]
 struct Credentials<'a> {
     email: &'a str,
@@ -19,23 +18,21 @@ pub struct DbConf {
     pub scope: String,
 }
 
-
-
-
-
 impl DB {
     #[allow(unused)]
     pub async fn user_signup(&self, db_conf: DbConf, user: &User) -> Result<String, DBError> {
         let jwt = self
             .db
-            .signup(Scope {
+            .signup(Record {
                 namespace: &db_conf.namespace,
                 database: &db_conf.database,
-                scope: &db_conf.scope,
+                //scope: &db_conf.scope,
                 params: Credentials {
                     email: &user.mail,
                     password: &user.pw,
                 },
+                //TODO Softcoding
+                access: "access",
             })
             .await?;
 
@@ -46,14 +43,16 @@ impl DB {
     pub async fn user_signin(&self, db_conf: DbConf, user: &User) -> Result<String, DBError> {
         let jwt = self
             .db
-            .signin(Scope {
+            .signin(Database {
                 namespace: &db_conf.namespace,
                 database: &db_conf.database,
-                scope: &db_conf.scope,
+                /* scope: &db_conf.scope,
                 params: Credentials {
                     email: &user.mail,
                     password: &user.pw,
-                },
+                }, */
+                username: &user.mail,
+                password: &user.pw,
             })
             .await?;
         Ok(jwt.as_insecure_token().to_string())

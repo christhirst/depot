@@ -15,7 +15,7 @@ async-trait = "0.1"
 thiserror = "1"
 tracing = "0.1"# for our async runtime
 tracing-subscriber = { version = "0.3", features = ["json"] }
-surrealdb = { version = "1.5", features = ["kv-mem"] }
+surrealdb = { version = "2.0", features = ["kv-mem"] }
 axum = { version = "0.7" }
 tower-http = { version = "0.4", features = ["fs"] }
 tower-cookies = "0.10"

@@ -2,7 +2,7 @@ use error::Error;
 /* use db_helper::initdb;
 use model::DBError; */
 use serde::{Deserialize, Serialize};
-use surrealdb::opt::auth::Scope;
+
 use tokio::net::TcpListener;
 use tower_cookies::CookieManagerLayer;
 use tracing::info;
@@ -28,7 +28,7 @@ use axum::{
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let subscriber = FmtSubscriber::builder()
-        .with_max_level(tracing::Level::INFO)
+        .with_max_level(tracing::Level::TRACE)
         .finish();
 
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
@@ -50,15 +50,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ("timestamp", "cash", "datetime"),
         ("currency", "cash", "string"),
         ("amount", "cash", "number"),
-        ("owner", "cash", "record(user)"),
+        //("owner", "cash", "record(user)"),
         //cashsum
-        ("owner", "cashsum", "record(user)"),
+        /* ("owner", "cashsum", "record(user)"),
         ("currency", "cashsum", "string"),
-        ("sum", "cashsum", "number"),
+        ("sum", "cashsum", "number"), */
         //share
-        ("stock", "share", "record(stock)"),
+        //("stock", "share", "record(stock)"),
         ("name", "share", "string"),
-        ("owner", "share", "record(user)"),
+        //("owner", "share", "record(user)"),
         ("symbol", "share", "string"),
         ("amount", "share", "number"),
         ("price", "share", "number"),
@@ -70,11 +70,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ("symbol", "stock", "string"),
         ("country", "stock", "string"),
     ];
-
+    println!("{:?}", "+++++++++++++++++++++++++++++++++++");
     let idx = vec![("symbolIndex", "stock", "symbol")];
 
     let _u = db.db_init(&table, &set, &idx).await?;
-
+    println!("{:?}", "+++++++++++++++++++++++++++++++++++");
     /* let jwt = db
         .db
         .signup(Scope {

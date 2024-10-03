@@ -37,7 +37,7 @@ impl DB {
     }
     #[allow(unused)]
     pub async fn cash_remove(&self, t: &Thing) -> Result<Cash, DBError> {
-        let mut resp: Option<Cash> = self.db.delete(t).await?;
+        let mut resp: Option<Cash> = self.db.delete((t.id.to_string(), t.tb.to_owned())).await?;
         resp.ok_or(DBError::Sdb)
     }
 

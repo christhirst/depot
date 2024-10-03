@@ -1,0 +1,69 @@
+#TODO buy
+#TODO sell
+#TODO delte entry
+#TODO sum
+#TODO buy only if enough cash
+
+
+
+###List all
+GET http://localhost:8081/api/shares_list HTTP/1.1
+Content-Type: application/json
+
+###Get 1
+GET http://localhost:8081/api/shares_get/9tzvawi529pddt8cwhno HTTP/1.1
+Content-Type: application/json
+
+
+###Get 1
+GET http://localhost:8081/api/shares_amount_by_symbol HTTP/1.1
+Content-Type: application/json
+
+
+###Get 1
+GET http://localhost:8081/api/shares_stock_worth_by_symbol/9tzvawi529pddt8cwhno HTTP/1.1
+Content-Type: application/json
+
+
+
+
+###Buy shares 
+POST http://localhost:8081/api/shares_buy HTTP/1.1
+Content-Type: application/json
+
+{ 
+     "name": "British",
+     "wkn": "r325551",
+     "isin": "22221221",
+     "symbol": "bata",
+     "country": "US"
+} 
+
+###Sell shares 
+POST http://localhost:8081/api/shares_sell HTTP/1.1
+Content-Type: application/json
+
+{ 
+    "method":"sell",
+    "params":{
+     "name": "British",
+     "wkn": "r325551",
+     "isin": "22221221",
+     "symbol": "bata",
+     "country": "US"}
+} 
+
+
+
+###Delete shares 
+
+DELETE  http://localhost:8081/api/shares/9tzvawi529pddt8cwhno HTTP/1.1
+Content-Type: application/json
+
+{ 
+     "name": "British",
+     "wkn": "r325551",
+     "isin": "22221221",
+     "symbol": "bata",
+     "country": "US"
+} 
